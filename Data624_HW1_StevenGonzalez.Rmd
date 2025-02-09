@@ -1,0 +1,86 @@
+---
+title: "Data 624 Homework 1"
+author: "Steven Gonzalez"
+date: "2/9/2025"
+output: pdf_document
+---
+
+## Load Packages
+```{r message=FALSE}
+library(fpp3)
+```
+
+## Exercise 1
+Explore the following four time series: `Bricks` from `aus_production`, `Lynx` from `pelt`, `Close` from `gafa_stock`, `Demand` from `vic_elec`.
+
+Use `?` (or `help()`) to find out about the data in each series.
+What is the time interval of each series?
+Use `autoplot()` to produce a time plot of each series.
+For the last plot, modify the axis labels and title.
+```{r message=FALSE}
+?aus_production
+aus_production #used to get further familiarized with the data
+```
+As can be seen from the results above, the `Bricks` time series from `aus_production` has a quarterly time interval. Below is the time plot illustrating this using `autoplot()`.
+```{r message=FALSE, warning=FALSE}
+autoplot(aus_production, Bricks)
+```
+
+```{r message=FALSE}
+?pelt
+pelt #used to get further familiarized with the data
+```
+As can be seen from the results above, the `Lynx` time series from `pelt` has an annual time interval. Below is the time plot illustrating this using `autoplot()`.
+```{r message=FALSE, warning=FALSE}
+autoplot(pelt, Lynx)
+```
+
+```{r message=FALSE}
+?gafa_stock
+gafa_stock #used to get further familiarized with the data
+```
+As can be seen from the results above, the `Close` time series from `gafa_stock` has a time interval with specific dates that seem to be business days, which would make sense given that it is a data set on stock prices. Below is the time plot illustrating this using `autoplot()`.
+```{r message=FALSE, warning=FALSE}
+autoplot(gafa_stock, Close)
+```
+
+```{r message=FALSE}
+?vic_elec
+vic_elec #used to get further familiarized with the data
+```
+As can be seen from the results above, the `Demand` time series from `vic_elec` has a half-hourly time interval. Below is the time plot illustrating this using `autoplot()` with modified title and axis labels.
+```{r message=FALSE, warning=FALSE}
+autoplot(vic_elec, Demand) +
+  labs(title = "Half-hourly electricity demand for Victoria, Australia",
+       y = "Total Electricity Demand (MWh)")
+```
+
+## Exercise 2
+Use `filter()` to find what days corresponded to the peak closing price for each of the four stocks in `gafa_stock`.
+```{r}
+aapl_peak <- gafa_stock %>% 
+  filter(Symbol == "AAPL") %>% 
+  select(Symbol, Date, Close) %>%
+  slice_max(Close, n = 1)
+aapl_peak
+
+amzn_peak <- gafa_stock %>% 
+  filter(Symbol == "AMZN") %>% 
+  select(Symbol, Date, Close) %>%
+  slice_max(Close, n = 1)
+amzn_peak
+
+fb_peak <- gafa_stock %>% 
+  filter(Symbol == "FB") %>% 
+  select(Symbol, Date, Close) %>%
+  slice_max(Close, n = 1)
+fb_peak
+
+goog_peak <- gafa_stock %>% 
+  filter(Symbol == "GOOG") %>% 
+  select(Symbol, Date, Close) %>%
+  slice_max(Close, n = 1)
+goog_peak
+```
+
+## Exercise 3
