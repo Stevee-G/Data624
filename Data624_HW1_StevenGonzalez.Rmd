@@ -154,8 +154,8 @@ Download `tourism.xlsx` from the book website and read it into R using `readxl::
 Create a tsibble which is identical to the `tourism` tsibble from the `tsibble` package.
 Find what combination of `Region` and `Purpose` had the maximum number of overnight trips on average.
 Create a new tsibble which combines the Purposes and Regions, and just has total trips by State.
-```{r}
-url1 <- "https://view.officeapps.live.com/op/view.aspx?src=https%3A%2F%2Fotexts.com%2Ffpp3%2Fextrafiles%2Ftourism.xlsx&wdOrigin=BROWSELINK"
-tourism1 <- readxl::read_excel(url1)
+```{r message=FALSE, warning=FALSE}
+url1 <- "https://raw.githubusercontent.com/Stevee-G/Data624/refs/heads/main/tourism.csv"
+tourism1 <- readr::read_csv(url1) #Had to resort to csv due to an issue with OneDrive making the excel unreadable when importing data from online
 View(tourism1)
 ```
