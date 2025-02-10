@@ -157,5 +157,47 @@ Create a new tsibble which combines the Purposes and Regions, and just has total
 ```{r message=FALSE, warning=FALSE}
 url1 <- "https://raw.githubusercontent.com/Stevee-G/Data624/refs/heads/main/tourism.csv"
 tourism1 <- readr::read_csv(url1) #Had to resort to csv due to an issue with OneDrive making the excel unreadable when importing data from online
-View(tourism1)
+glimpse(tourism1)
+
+tourism #Take a look at the tourism tsibble in order to compare with tsibble made from the tourism excel sheet
+?tourism #Get familiar with tourism tsibble to identify index
+
+tourism1_ts <- tourism1 %>%
+  mutate(Quarter = yearquarter(Quarter)) %>% 
+  as_tsibble(index = Quarter, key = c(Region, State, Purpose))
+tourism1_ts #Glimpse and compare tourism1_ts to tourism tsibble
+```
+By comparing the tsibbles produced above we can say for certain that the new `tourism1_ts` is identical to the original `tourism`.
+```{r}
+max_avg_trips <- tourism1_ts %>% 
+  group_by(Region, Purpose) %>% 
+  summarise(avg_trips = mean(Trips)) %>% 
+  slice_max(avg_trips, n = 1) %>% 
+  arrange(desc(avg_trips))
+max_avg_trips
+```
+Through the code chunk above, we can see that the combination of `Region` and `Purpose` with the maximum number of overnight trips on average was "Melbourne" and "Visiting".
+```{r}
+total_trips <- tourism1_ts %>%
+  group_by(State) %>% #By using the group_by function on State, we can collapse all region and purpose data to see what the total trips are by state/territory
+  summarise(tot_trips = sum(Trips))
+total_trips
+```
+
+## Exercise 8
+Use the following graphics functions: `autoplot()`, `gg_season()`, `gg_subseries()`, `gg_lag()`, `ACF()` and explore features from the following time series: “Total Private” `Employed` from `us_employment`, `Bricks` from `aus_production`, `Hare` from `pelt`, “H02” `Cost` from `PBS`, and `Barrels` from `us_gasoline`.
+
+Can you spot any seasonality, cyclicity and trend?
+What do you learn about the series?
+What can you say about the seasonal patterns?
+Can you identify any unusual years?
+```{r}
+us_employment
+private_employment <- us_employment %>% 
+  filter(Title == "Total Private")
+autoplot(private_employment, Employed)
+gg_season(private_employment, y = Employed)
+gg_subseries(private_employment, y = Employed)
+gg_lag(private_employment, y = Employed)
+ACF(private_employment, y = Employed)
 ```
