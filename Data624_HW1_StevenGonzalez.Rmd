@@ -201,3 +201,42 @@ gg_subseries(private_employment, y = Employed)
 gg_lag(private_employment, y = Employed)
 ACF(private_employment, y = Employed)
 ```
+
+```{r}
+aus_production
+autoplot(aus_production, Bricks)
+gg_season(aus_production, y = Bricks)
+gg_subseries(aus_production, y = Bricks)
+gg_lag(aus_production, y = Bricks)
+ACF(aus_production, y = Bricks)
+```
+
+```{r}
+pelt
+autoplot(pelt, Hare)
+#gg_season(pelt, y = Hare, period = "year") Couldn't get it to work :(
+gg_subseries(pelt, y = Hare)
+gg_lag(pelt, y = Hare)
+ACF(pelt, y = Hare)
+```
+
+```{r}
+PBS
+H02 <- PBS %>%
+  filter(ATC2 == "H02")
+autoplot(H02, Cost)
+gg_season(H02, y = Cost)
+gg_subseries(H02, y = Cost)
+#gg_lag(H02, y = Cost) Couldn't get it to work :(
+ACF(H02, y = Cost)
+```
+
+```{r}
+us_gasoline
+autoplot(us_gasoline, Barrels)
+gg_season(us_gasoline, y = Barrels)
+gg_subseries(us_gasoline, y = Barrels)
+gg_lag(us_gasoline, y = Barrels)
+ACF(us_gasoline, y = Barrels)
+```
+
