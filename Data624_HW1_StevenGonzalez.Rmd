@@ -191,7 +191,7 @@ Can you spot any seasonality, cyclicity and trend?
 What do you learn about the series?
 What can you say about the seasonal patterns?
 Can you identify any unusual years?
-```{r}
+```{r warning=FALSE}
 us_employment
 private_employment <- us_employment %>% 
   filter(Title == "Total Private")
@@ -199,28 +199,31 @@ autoplot(private_employment, Employed)
 gg_season(private_employment, y = Employed)
 gg_subseries(private_employment, y = Employed)
 gg_lag(private_employment, y = Employed)
-ACF(private_employment, y = Employed)
+ACF(private_employment, y = Employed) %>% 
+  autoplot()
 ```
-
-```{r}
+As can be seen above, the “Total Private” `Employed` time series from `us_employment` does seem to show some seasonality where the numbers employed go up through the middle months of the year just to drop again towards the end of the year but still higher than they were in the beginning of the year. The series did have some cyclicity throughout the 80 year stretch that could be due to fluctuations in the economy, especially the unusual dip recorded in the few years leading up to 2010. The over all trend of the series is positive.
+```{r warning=FALSE}
 aus_production
 autoplot(aus_production, Bricks)
 gg_season(aus_production, y = Bricks)
 gg_subseries(aus_production, y = Bricks)
 gg_lag(aus_production, y = Bricks)
-ACF(aus_production, y = Bricks)
+ACF(aus_production, y = Bricks) %>% 
+  autoplot()
 ```
-
-```{r}
+As can be seen above, the `Bricks` time series from `aus_production` gives clear signs of seasonality where the number of bricks produced goes up in quarters two and three to drop dramatically towards the beginning of the following year. The series was cyclical every few years and had some especially hard dips around the years 1975, 1983, 1991, and 1996. The over all trend began positive up until around 1983 where things began going south. This could probably be due to consumer demand for bricks decreasing throughout the last few decades.
+```{r warning=FALSE}
 pelt
 autoplot(pelt, Hare)
 #gg_season(pelt, y = Hare, period = "year") Couldn't get it to work :(
 gg_subseries(pelt, y = Hare)
 gg_lag(pelt, y = Hare)
-ACF(pelt, y = Hare)
+ACF(pelt, y = Hare) %>% 
+  autoplot()
 ```
-
-```{r}
+As can be seen above, the `Hare` time series from `pelt` shows very little, f any, signs of seasonality. Seasonality can only be defined within a year, whether it be quarterly, monthly, or weekly. This time series does not show to have yearly patterns but rather a pattern that seems to last around 10 years at a time. This pattern can be better described as cyclical. With regards to trend, there seems to be no indication of one, whether positive or negative. This series is best defined as a pattern of habitual decade long cycles repeating nonstop.
+```{r warning=FALSE}
 PBS
 H02 <- PBS %>%
   filter(ATC2 == "H02")
@@ -228,15 +231,21 @@ autoplot(H02, Cost)
 gg_season(H02, y = Cost)
 gg_subseries(H02, y = Cost)
 #gg_lag(H02, y = Cost) Couldn't get it to work :(
-ACF(H02, y = Cost)
+ACF(H02, y = Cost) %>% 
+  autoplot()
 ```
-
-```{r}
+As can be seen above, the “H02” `Cost` time series from `PBS` is seasonal for some `Concession`/`Type` combinations but not for all. Right off the bat we can see in the `gg_season` and `gg_subseries` plots that general/co_payments combination is not seasonal, while the rest are. Concessional/co-payments seems to rise throughout the middle months, concessional/safety net seems to dip during the middle months, and general/safety net seems to rise slightly during the final months of the year. Given the above plots, we can't say for sure whether there is a cycle since the fluctuations seen can be explained by the seasonality mentioned earlier. There are noticeable trends with concessional/co_payments and concessional/safety net moving in the positive throughout the years while general_co-payments and general/safety net remain about the same.
+```{r warning=FALSE}
 us_gasoline
 autoplot(us_gasoline, Barrels)
 gg_season(us_gasoline, y = Barrels)
 gg_subseries(us_gasoline, y = Barrels)
 gg_lag(us_gasoline, y = Barrels)
-ACF(us_gasoline, y = Barrels)
+ACF(us_gasoline, y = Barrels) %>% 
+  autoplot()
 ```
+As can be seen above, the `Barrels` time series from `us_gasoline` does seem to show slight seasonality with the barrels sold between the months of March and October bumping up and going back down shortly after. There don't seem to be any prominent cycles except for the dip observed around the years 2007 to 2013 which was most likely caused by the [economic recession of 2008](https://www.history.com/topics/21st-century/recession). The overall trend, however, is positive and it seems that US gasoline consumption managed to recover from the downturn.
+
+## Works Cited
+History.com Editors. (2019, October 11). Great Recession. HISTORY; A&E Television Networks. https://www.history.com/topics/21st-century/recession
 
