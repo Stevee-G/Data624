@@ -29,7 +29,7 @@ global_economy %>%
 
 global_economy %>%
   mutate(GDP_capita = GDP/Population) %>% 
-  filter(Code == 'MCO' | Code == 'LIE', Year == 2016) %>% 
+  filter(Code == "MCO" | Code == "LIE", Year == 2016) %>% 
   arrange(desc(GDP_capita))
 ```
 
@@ -40,26 +40,140 @@ United States GDP from global_economy.
 Slaughter of Victorian “Bulls, bullocks and steers” in aus_livestock.
 Victorian Electricity Demand from vic_elec.
 Gas production from aus_production.
-```{r}
+```{r message=FALSE, warning=FALSE}
+autoplot(global_economy %>% 
+           filter(Country == "United States"), GDP) +
+  labs(title= "US GDP")
+```
 
+```{r message=FALSE, warning=FALSE}
+autoplot(aus_livestock %>% 
+           filter(Animal == "Bulls, bullocks and steers",
+                  State == "Victoria"), Count) +
+  labs(title= "Slaughter of Victorian “Bulls, bullocks and steers”")
+
+lambda_livestock <- aus_livestock %>%
+  filter(Animal == "Bulls, bullocks and steers",
+                  State == "Victoria") %>% 
+  features(Count, features = guerrero) %>% 
+  pull(lambda_guerrero)
+
+aus_livestock %>% 
+  filter(Animal == "Bulls, bullocks and steers",
+         State == "Victoria") %>% 
+  autoplot(box_cox(Count, lambda_livestock)) +
+  labs(title= "Lambda Transformed Slaughter of Victorian “Bulls, bullocks and steers”")
+```
+
+```{r message=FALSE, warning=FALSE}
+autoplot(vic_elec, Demand) +
+  labs(title = "Victorian Electricity Demand")
+
+lambda_elec <- vic_elec %>%
+  features(Demand, features = guerrero) %>% 
+  pull(lambda_guerrero)
+
+vic_elec %>% 
+  autoplot(box_cox(Demand, lambda_elec)) +
+  labs(title = "Lambda Transformed Victorian Electricity Demand")
+```
+
+```{r message=FALSE, warning=FALSE}
+autoplot(aus_production, Gas) +
+  labs(title= "Australian Gas Production")
+
+lambda_gas <- aus_production %>%
+  features(Gas, features = guerrero) %>% 
+  pull(lambda_guerrero)
+
+aus_production %>% 
+  autoplot(box_cox(Gas, lambda_gas)) +
+  labs(title = "Lambda Transformed Australian Gas Production")
 ```
 
 ## Exercise 3
 Why is a Box-Cox transformation unhelpful for the canadian_gas data?
-```{r}
+```{r message=FALSE, warning=FALSE}
+autoplot(canadian_gas, Volume) +
+  labs(title= "Canadian Gas")
 
+lambda_canada <- canadian_gas %>%
+  features(Volume, features = guerrero) %>% 
+  pull(lambda_guerrero)
+
+canadian_gas %>% 
+  autoplot(box_cox(Volume, lambda_canada)) +
+  labs(title = "Lambda Transformed Canadian Gas")
 ```
 
 ## Exercise 4
 What Box-Cox transformation would you select for your retail data (from Exercise 7 in Section 2.10)?
-```{r}
+```{r message=FALSE, warning=FALSE}
+set.seed(1)
+myseries <- aus_retail %>% 
+  filter(`Series ID` == sample(aus_retail$`Series ID`,1))
 
+autoplot(myseries, Turnover) +
+  labs(title = "Retail Turnovers")
+
+lambda_turnover <- myseries %>%
+  features(Turnover, features = guerrero) %>% 
+  pull(lambda_guerrero)
+lambda_turnover
+
+myseries %>% 
+  autoplot(box_cox(Turnover, lambda_turnover)) +
+  labs(title = "Lambda Transformed Retail Turnovers")
 ```
 
 ## Exercise 5
-For the following series, find an appropriate Box-Cox transformation in order to stabilise the variance. Tobacco from aus_production, Economy class passengers between Melbourne and Sydney from ansett, and Pedestrian counts at Southern Cross Station from pedestrian.
-```{r}
+For the following series, find an appropriate Box-Cox transformation in order to stabilize the variance. Tobacco from aus_production, Economy class passengers between Melbourne and Sydney from ansett, and Pedestrian counts at Southern Cross Station from pedestrian.
+```{r message=FALSE, warning=FALSE}
+autoplot(aus_production, Tobacco) +
+  labs(title = "Tobacco and Cigarette Production")
 
+lambda_tobacco <- aus_production %>%
+  features(Tobacco, features = guerrero) %>% 
+  pull(lambda_guerrero)
+lambda_tobacco
+
+aus_production %>% 
+  autoplot(box_cox(Tobacco, lambda_tobacco)) +
+  labs(title = "Lambda Transformed Tobacco and Cigarette Production")
+```
+
+```{r message=FALSE, warning=FALSE}
+autoplot(ansett %>% 
+           filter(Class == "Economy", Airports == "MEL-SYD"), Passengers) +
+  labs(title = "Economy Class Passengers between Melbourne and Sydney")
+
+lambda_econ <- ansett %>%
+  filter(Class == "Economy", Airports == "MEL-SYD") %>% 
+  features(Passengers, features = guerrero) %>% 
+  pull(lambda_guerrero)
+lambda_econ
+
+ansett %>% 
+  filter(Class == "Economy", Airports == "MEL-SYD") %>% 
+  autoplot(box_cox(Passengers, lambda_econ)) +
+  labs(title = "Lambda Transformed Economy Class Passengers between Melbourne and Sydney")
+```
+
+```{r message=FALSE, warning=FALSE}
+autoplot(pedestrian %>% 
+           filter(Sensor == "Southern Cross Station"), Count) +
+  labs(title = "Pedestrians at Southern Cross Station")
+
+lambda_ped <- pedestrian %>% 
+  filter(Sensor == "Southern Cross Station") %>% 
+  features(Count, features = guerrero) %>% 
+  pull(lambda_guerrero)
+lambda_ped
+
+pedestrian %>% 
+  filter(Sensor == "Southern Cross Station") %>% 
+  autoplot(box_cox(Count, lambda_ped)) +
+  labs(title = "Lambda Transformed Pedestrians at Southern Cross Station")
 ```
 
 ## Exercise 7
@@ -73,13 +187,13 @@ Do the results support the graphical interpretation from part a?
 Compute and plot the seasonally adjusted data.
 Change one observation to be an outlier (e.g., add 300 to one observation), and recompute the seasonally adjusted data. What is the effect of the outlier?
 Does it make any difference if the outlier is near the end rather than in the middle of the time series?
-```{r}
+```{r message=FALSE, warning=FALSE}
 
 ```
 
 ## Exercise 8
 Recall your retail time series data (from Exercise 7 in Section 2.10). Decompose the series using X-11. Does it reveal any outliers, or unusual features that you had not noticed previously?
-```{r}
+```{r message=FALSE, warning=FALSE}
 
 ```
 
@@ -88,7 +202,7 @@ Figures 3.19 and 3.20 show the result of decomposing the number of persons in th
 
 Write about 3–5 sentences describing the results of the decomposition. Pay particular attention to the scales of the graphs in making your interpretation.
 Is the recession of 1991/1992 visible in the estimated components?
-```{r}
+```{r message=FALSE, warning=FALSE}
 
 ```
 
