@@ -10,7 +10,7 @@ output:
 ## Load Packages
 ```{r message=FALSE}
 library(fpp3)
-library(ggrepel)
+library(seasonal)
 library(USgas)
 ```
 
@@ -179,7 +179,9 @@ pedestrian %>%
 ## Exercise 7
 Consider the last five years of the Gas data from aus_production.
 
+```{r message=FALSE, warning=FALSE}
 gas <- tail(aus_production, 5*4) |> select(Gas)
+```
 
 Plot the time series. Can you identify seasonal fluctuations and/or a trend-cycle?
 Use classical_decomposition with type=multiplicative to calculate the trend-cycle and seasonal indices.
@@ -188,13 +190,50 @@ Compute and plot the seasonally adjusted data.
 Change one observation to be an outlier (e.g., add 300 to one observation), and recompute the seasonally adjusted data. What is the effect of the outlier?
 Does it make any difference if the outlier is near the end rather than in the middle of the time series?
 ```{r message=FALSE, warning=FALSE}
+autoplot(gas)
+```
 
+```{r message=FALSE, warning=FALSE}
+gas %>%
+  model(cd = classical_decomposition(Gas, type = "multiplicative")) %>%
+  components()
+```
+
+```{r message=FALSE, warning=FALSE}
+gas %>%
+  model(cd = classical_decomposition(Gas, type = "multiplicative")) %>%
+  components() %>%
+  as_tsibble() %>%
+  autoplot(season_adjust)
+```
+
+```{r message=FALSE, warning=FALSE}
+gas_outlier <- gas
+gas_outlier$Gas[7] <- gas_outlier$Gas[7] + 300
+gas_outlier %>% 
+  model(cd = classical_decomposition(Gas, type = "multiplicative")) %>%
+  components()
+```
+
+```{r message=FALSE, warning=FALSE}
+gas_outlier1 <- gas
+gas_outlier1$Gas[20] <- gas_outlier1$Gas[20] + 300
+gas_outlier1 %>% 
+  model(cd = classical_decomposition(Gas, type = "multiplicative")) %>%
+  components()
 ```
 
 ## Exercise 8
 Recall your retail time series data (from Exercise 7 in Section 2.10). Decompose the series using X-11. Does it reveal any outliers, or unusual features that you had not noticed previously?
 ```{r message=FALSE, warning=FALSE}
+myseries %>% 
+  model(x11 = X_13ARIMA_SEATS(Turnover ~ x11())) %>%
+  components()
 
+myseries %>% 
+  model(x11 = X_13ARIMA_SEATS(Turnover ~ x11())) %>%
+  components() %>%
+  autoplot()
 ```
 
 ## Exercise 9
