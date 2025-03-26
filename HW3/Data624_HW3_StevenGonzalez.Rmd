@@ -86,6 +86,8 @@ hh_wealth %>%
   autoplot(hh_wealth) +
   labs(title = "Household Wealth Drift Forecast")
 ```
+
+
 ```{r message=FALSE, warning=FALSE}
 takeaway <- aus_retail %>% 
   filter(!is.na(Turnover)) %>% 
@@ -101,6 +103,8 @@ takeaway %>%
   labs(title = "Australian Takeaway Food Turnover Seasonal Naive Forecast") +
   facet_wrap(vars(State), scales = "free", ncol = 2, nrow = 4)
 ```
+
+
 
 ## Exercise 2
 Use the Facebook stock price (data set gafa_stock) to do the following:
@@ -120,10 +124,32 @@ autoplot(fb_stock) +
 
 fb_stock %>% 
   model(Drift = RW(Open ~ drift())) %>% 
-  forecast(h = "5 years") %>% 
+  forecast(h = 250) %>% 
   autoplot(fb_stock) +
   labs(title = "Facebook Stock Drift Forecast")
+
+fb_stock %>% 
+  model(Drift = RW(Open ~ drift())) %>% 
+  forecast(h = 250) %>% 
+  autoplot(fb_stock, level = NULL) +
+  geom_segment(aes(x = min(day), y = Open[which.min(day)], 
+                   xend = max(day), yend = Open[which.max(day)]), 
+               color = "red", linetype = "dashed") +
+  labs(title = "Facebook Stock Extrapolated Line Segment")
 ```
+
+
+```{r message=FALSE, warning=FALSE}
+fb_stock %>% 
+  model(Mean = MEAN(Open),
+        Naive = NAIVE(Open),
+        Snaive = SNAIVE(Open)) %>% 
+  forecast(h = 250) %>% 
+  autoplot(fb_stock, level = NULL) +
+  labs(title = "Facebook Stock Mean, Naive and Seasonal Naive Forecasts")
+```
+
+
 
 ## Exercise 3
 Apply a seasonal naïve method to the quarterly Australian beer production data from 1992. Check if the residuals look like white noise, and plot the forecasts. The following code will help.
@@ -146,11 +172,50 @@ What do you conclude?
 ## Exercise 4
 Repeat the previous exercise using the Australian Exports series from global_economy and the Bricks series from aus_production. Use whichever of NAIVE() or SNAIVE() is more appropriate in each case.
 ```{r message=FALSE, warning=FALSE}
+aus_exports <- global_economy %>% 
+  filter(!is.na(Exports)) %>% 
+  filter(Country == "Australia") %>% 
+  select(Exports)
+autoplot(aus_exports)
 
+afit <- aus_exports %>% 
+  model(NAIVE(Exports))
+
+afit %>% 
+  gg_tsresiduals()
+
+afit %>% 
+  forecast() %>% 
+  autoplot(aus_exports)
 ```
+
+
+```{r message=FALSE, warning=FALSE}
+bricks <- aus_production %>% 
+  filter(!is.na(Bricks)) %>% 
+  select(Bricks)
+autoplot(bricks)
+
+bfit <- bricks %>% 
+  model(SNAIVE(Bricks))
+
+bfit %>% 
+  gg_tsresiduals()
+
+bfit %>% 
+  forecast() %>% 
+  autoplot(bricks)
+```
+
+
 
 ## Exercise 7
 For your retail time series (from Exercise 7 in Section 2.10):
+```{r message=FALSE, warning=FALSE}
+set.seed(1)
+myseries <- aus_retail %>% 
+  filter(`Series ID` == sample(aus_retail$`Series ID`,1))
+```
 
 Create a training dataset consisting of observations before 2011 using
 ```{r message=FALSE, warning=FALSE}
@@ -166,19 +231,19 @@ autoplot(myseries, Turnover) +
 
 Fit a seasonal naïve model using SNAIVE() applied to your training data (myseries_train).
 ```{r message=FALSE, warning=FALSE}
-fit <- myseries_train %>% 
-  model(SNAIVE())
+mfit <- myseries_train %>% 
+  model(SNAIVE(Turnover))
 ```
 
 Check the residuals. Do the residuals appear to be uncorrelated and normally distributed?
 ```{r message=FALSE, warning=FALSE}
-fit %>%
+mfit %>%
   gg_tsresiduals()
 ```
 
 Produce forecasts for the test data
 ```{r message=FALSE, warning=FALSE}
-fc <- fit %>% 
+fc <- mfit %>% 
   forecast(new_data = anti_join(myseries, myseries_train))
 fc %>%
   autoplot(myseries)
@@ -186,7 +251,7 @@ fc %>%
 
 Compare the accuracy of your forecasts against the actual values.
 ```{r message=FALSE, warning=FALSE}
-fit %>%
+mfit %>%
   accuracy()
 fc %>% 
   accuracy(myseries)
@@ -195,6 +260,4 @@ fc %>%
 How sensitive are the accuracy measures to the amount of training data used?
 
  
-
-## Works Cited
-3.7 Exercises | Forecasting: Principles and Practice (3rd ed). (2025). Otexts.com. https://otexts.com/fpp3/decomposition-exercises.html
+ 
