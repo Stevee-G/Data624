@@ -38,7 +38,7 @@ aus_pop %>%
   labs(title = "Australian Population Growth Drift Forecast")
 ```
 
-
+The above forecast for Australian Population from `global_economy` was created using `RW(y ~ drift())`. The reason for using this technique over `NAIVE(y)` and `SNAIVE(y)` was due to the series' already existing, and consistent, positive trend and lack of seasonality rendering other techniques useless.
 ```{r message=FALSE, warning=FALSE}
 bricks_pro <- aus_production %>%
   filter(!is.na(Bricks)) %>% 
@@ -54,7 +54,7 @@ bricks_pro %>%
   labs(title = "Australian Bricks Production Seasonal Naive Forecast")
 ```
 
-
+The above forecast for Bricks from `aus_production` was created using `SNAIVE(y)`. Highly repetitive and seasonal data such as the one found in this series is best predicted with seasonality in mind. In addition, the confidence interval seen in the graph can also account for any upward or downward fluctuation that can take place in series' trend.
 ```{r message=FALSE, warning=FALSE}
 nsw_lambs <- aus_livestock %>% 
   filter(!is.na(Count)) %>% 
@@ -71,7 +71,7 @@ nsw_lambs %>%
   labs(title = "New South Wales Lambs Unalived Seasonal Naive Forecast")
 ```
 
-
+The above forecast for NSW Lambs from `aus_livestock` was created using `SNAIVE(y)`. Just like the series before this data is best predicted with seasonality in mind. The confidence interval can also account for any upward or downward fluctuation just like before.
 ```{r message=FALSE, warning=FALSE}
 hh_wealth <- hh_budget %>% 
   filter(!is.na(Wealth)) %>% 
@@ -87,7 +87,7 @@ hh_wealth %>%
   labs(title = "Household Wealth Drift Forecast")
 ```
 
-
+The above forecast for Household wealth from `hh_budget` was created using `RW(y ~ drift())`. The series shows little to no seasonality and each country has a clear positive trend regardless of some fluctuation between the years 1999-2002 and 2007-2008.
 ```{r message=FALSE, warning=FALSE}
 takeaway <- aus_retail %>% 
   filter(!is.na(Turnover)) %>% 
@@ -104,7 +104,7 @@ takeaway %>%
   facet_wrap(vars(State), scales = "free", ncol = 2, nrow = 4)
 ```
 
-
+The above forecast for Australian takeaway food turnover from `aus_retail` was created using `SNAIVE(y)`. The turnover data for each region of Australia shows clear seasonality even with a slightly upward trend this can easily be accounted for through the confidence intervals for each respective graph.
 
 ## Exercise 2
 Use the Facebook stock price (data set gafa_stock) to do the following:
@@ -138,7 +138,7 @@ fb_stock %>%
   labs(title = "Facebook Stock Extrapolated Line Segment")
 ```
 
-
+In order to show that the drift forecast is identical to extending the line drawn between the first and last observation, a second plot was created using `geom_segment` that drew a visible dashed line between the first and last points of the graph. As can be seen, the drift forecast is a clear continuation of this line.
 ```{r message=FALSE, warning=FALSE}
 fb_stock %>% 
   model(Mean = MEAN(Open),
@@ -149,7 +149,7 @@ fb_stock %>%
   labs(title = "Facebook Stock Mean, Naive and Seasonal Naive Forecasts")
 ```
 
-
+When using some of the other benchmark functions to forecast the same data set, the naive technique seems to have had the best results. This statement, of course, should be taken with a grain of salt since the forecast extends all the way to 250 from the last data point. With this in mind, the naive forecast can hold true for a good few days but will then begin to deviate from the true value. Still, a naive forecast does perform better when compared to mean and seasonal naive forecasts.
 
 ## Exercise 3
 Apply a seasonal naïve method to the quarterly Australian beer production data from 1992. Check if the residuals look like white noise, and plot the forecasts. The following code will help.
@@ -161,13 +161,19 @@ recent_production <- aus_production |>
 fit <- recent_production |> model(SNAIVE(Beer))
 # Look at the residuals
 fit |> gg_tsresiduals()
-# Look a some forecasts
+# Look at some forecasts
 fit |> forecast() |> autoplot(recent_production)
 ```
+```{r message=FALSE, warning=FALSE}
+# Check for significance
+augment(fit) %>%
+  features(.resid, ljung_box, lag=8)
+```
+
 
 What do you conclude?
 
-
+As can be seen from the visuals, there is a consistent up and down pattern in the innovation residuals chart, there are 4 lines on the lag chart extending past or near the boundary, and the distribution seems to be skewed slightly to the right. If this wasn't enough to entail room for improvement in the forecast, a Ljung-Box test was conducted which led to a large Q* value and significant p-value, indicating that this is not just white noise.
 
 ## Exercise 4
 Repeat the previous exercise using the Australian Exports series from global_economy and the Bricks series from aus_production. Use whichever of NAIVE() or SNAIVE() is more appropriate in each case.
@@ -187,9 +193,12 @@ afit %>%
 afit %>% 
   forecast() %>% 
   autoplot(aus_exports)
+
+augment(afit) %>%
+  features(.resid, ljung_box, lag=10)
 ```
 
-
+The above visuals show us that the innovation residuals data for aus_exports from `global_economy` has a slight pattern but increases in volatility towards the end, there is just one line in the lags chart out of bounds, and it is more or less normally distributed. Add on top of that that the Q* value is low and the p-value is insignificant and we can conclude that what is remaining from the forecast is mostly white noise.
 ```{r message=FALSE, warning=FALSE}
 bricks <- aus_production %>% 
   filter(!is.na(Bricks)) %>% 
@@ -205,9 +214,12 @@ bfit %>%
 bfit %>% 
   forecast() %>% 
   autoplot(bricks)
+
+augment(bfit) %>%
+  features(.resid, ljung_box, lag=8)
 ```
 
-
+The above visuals show us that the innovation residuals data for bricks from `aus_production` has an obvious pattern with an increase in volatility towards the middle, the majority of the lag segments surpass the boundaries, and its distribution is skewed to the left. In addition, the Q* value is very large and the p-value is very significant which helps us conclude that what is remaining from the forecast is not just white noise and can be improved to take what is remaining into account.
 
 ## Exercise 7
 For your retail time series (from Exercise 7 in Section 2.10):
@@ -241,6 +253,8 @@ mfit %>%
   gg_tsresiduals()
 ```
 
+As can be seen above, the residuals do not appear to be uncorrelated due to the innovation residuals chart presenting high dependency after the year 1995, almost half of the segments on the lag chart surpassing the boundaries, and their distribution being narrow and skewed to the left.
+
 Produce forecasts for the test data
 ```{r message=FALSE, warning=FALSE}
 fc <- mfit %>% 
@@ -259,5 +273,4 @@ fc %>%
 
 How sensitive are the accuracy measures to the amount of training data used?
 
- 
- 
+The accuracy measures seem to be very sensitive to the amount of training data used. As can be seen in the results above, the measures for the test data are drastically different from the measures for the training data. This is most likely due to the fact that the training data takes into account absolutely everything before what is going to be tested irrespective of any sudden changes or fluctuations that could have taken place towards the end of the data. Meanwhile, the test data, depending on the very last seasonal period in this case, uses the pattern at the very end and repeats it over and over. Given the drastic change in trend between the years 2005-2010, this would lead to the forecast having the errors we see above.
