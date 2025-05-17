@@ -1,0 +1,132 @@
+---
+title: "Data 624 Homework 4"
+author: "Steven Gonzalez"
+date: "3/2/2025"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+## Load Packages
+```{r message=FALSE, warning=FALSE}
+library(AppliedPredictiveModeling)
+library(caret)
+library(corrplot)
+library(mlbench)
+library(tidyverse)
+library(VIM)
+```
+
+## Exercise 1
+The UC Irvine Machine Learning Repository contains a data set related to glass identification. The data consist of 214 glass samples labeled as one of seven class categories. There are nine predictors, including the refractive index and percentages of eight elements: Na, Mg, Al, Si, K, Ca, Ba, and Fe.
+The data can be accessed via:
+```{r message=FALSE, warning=FALSE}
+data(Glass)
+str(Glass)
+```
+
+Using visualizations, explore the predictor variables to understand their distributions as well as the relationships between predictors.
+```{r message=FALSE, warning=FALSE}
+glass_predictors <- select(Glass, c(2:9))
+glass_predictors %>%
+  gather() %>% 
+  ggplot(aes(value)) +
+  geom_histogram(bins=50) +
+  facet_wrap(~ key, scales = 'free')
+
+predictor_cor <- cor(glass_predictors)
+corrplot(predictor_cor, order = 'hclust')
+```
+
+As seen from the plots above, the distributions of the individual elements seem to show some skewness. There also seems to be some positive correlation between Al and Ba and negative correlation between Mg and Al, Ca, and Ba.
+
+Do there appear to be any outliers in the data? Are any predictors skewed?
+```{r message=FALSE, warning=FALSE}
+glass_predictors %>% 
+  gather() %>%
+  ggplot(aes(value)) +
+  geom_boxplot() +
+  facet_wrap(~key, scales = 'free')
+```
+
+As seen from the plot above, all predictors contain outliers with the exception of Mg. Based on the distribution plots from the previous portion, elements Al, Ca, Na, and Si show minimal skewness while Ba, Fe, and K are skewed to the right and Mg is skewed to the left.
+
+Are there any relevant transformations of one or more predictors that might improve the classification model?
+```{r message=FALSE, warning=FALSE}
+bc_transform <- preProcess(glass_predictors,
+                          method = c('BoxCox', 'center', 'scale'))
+glass_predictors_transform <- predict(bc_transform, glass_predictors)
+
+glass_predictors_transform %>%
+  gather() %>% 
+  ggplot(aes(value)) +
+  geom_histogram(bins=50) +
+  facet_wrap(~ key, scales = 'free')
+
+glass_predictors_transform %>% 
+  gather() %>%
+  ggplot(aes(value)) +
+  geom_boxplot() +
+  facet_wrap(~key, scales = 'free')
+```
+
+A BoxCox transformation was performed on the predictors data set and resulted in the pots seen above. The predictors that benefited most from this transformation were Al, Ca, Na, and Si.
+
+## Exercise 2
+The soybean data can also be found at the UC Irvine Machine Learning Repository. Data were collected to predict disease in 683 soybeans. The 35 predictors are mostly categorical and include information on the environmental conditions (e.g., temperature, precipitation) and plant conditions (e.g., left spots, mold growth). The outcome labels consist of 19 distinct classes.
+The data can be loaded via:
+```{r message=FALSE, warning=FALSE}
+data(Soybean)
+str(Soybean)
+```
+
+Investigate the frequency distributions for the categorical predictors. Are any of the distributions degenerate in the ways discussed earlier in this chapter?
+```{r message=FALSE, warning=FALSE}
+soybean_predictors <- select(Soybean, c(2:36))
+soybean_predictors %>%
+  gather() %>% 
+  ggplot(aes(value)) +
+  geom_bar() +
+  facet_wrap(~ key)
+
+nearZeroVar(soybean_predictors, name = TRUE)
+```
+
+The frequency distributions shown above display signs of degenerate variables. To confirm specifically which, the `nearZeroVar()` function was used resulting in the identification of predictors `leaf.mild`, `mycelium`, and `sclerotia` as degenerate variables.
+
+Roughly 18 % of the data are missing. Are there particular predictors that are more likely to be missing? Is the pattern of missing data related to the classes?
+```{r message=FALSE, warning=FALSE}
+soybean_predictors %>%
+  select(everything()) %>% 
+  summarize_all(funs(sum(is.na(.)))) %>% 
+  pivot_longer(everything(),
+               names_to = 'Predictor',
+               values_to = 'Number of Missing Values')
+
+sum(is.na(soybean_predictors))
+
+Soybean %>%
+  filter_all(any_vars(is.na(.))) %>%
+  select(Class) %>%
+  group_by(Class) %>%
+  summarise(count = n())
+```
+
+The tibbles above give us a glimpse into the predictors with the most missing data. These predictors being, `hail`, `sever`, `seed.tmt`, and `lodging` with 121 missing values each. When sifting through for which classes are responsible for this missing data we see that they are found in `2-4-d-injury`, `cyst-nematode`, `diaporthe-pod-&-stem-blight`, `herbicide-injury`, and `phytophthora-rot`.
+
+Develop a strategy for handling missing data, either by eliminating predictors or imputation.
+```{r message=FALSE, warning=FALSE}
+soybean_imputed <- kNN(soybean_predictors, k = 3) %>% 
+  select(c(1:35))
+
+soybean_imputed %>%
+  select(everything()) %>% 
+  summarize_all(funs(sum(is.na(.)))) %>% 
+  pivot_longer(everything(),
+               names_to = 'Predictor',
+               values_to = 'Number of Missing Values')
+
+sum(is.na(soybean_imputed))
+```
+
+As seen above, imputation was performed on the predictor data set using the KNN model looking up to the third nearest neighbor. This resulted in a total missing value count of 0.
