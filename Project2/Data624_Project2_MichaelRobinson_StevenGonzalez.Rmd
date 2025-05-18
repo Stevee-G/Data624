@@ -42,12 +42,18 @@ str(training)
 str(testing)
 ```
 
-### Assess PH Distributions
+### Assess PH Distributions by Brand Code
 ```{r message=FALSE, warning=FALSE}
 training %>% 
   ggplot() + 
   aes(x = PH) + 
   geom_histogram(bins= 50) + 
+  facet_wrap(~ Brand.Code, scales = "free")
+
+training %>% 
+  ggplot() + 
+  aes(x = PH) + 
+  geom_boxplot() + 
   facet_wrap(~ Brand.Code, scales = "free")
 ```
 
@@ -141,6 +147,12 @@ y_test <- y[-trainIndex]
 
 ### Address Degenerate Variables
 ```{r message=FALSE, warning=FALSE}
+nearZeroVar(training %>% 
+              select(where(is.numeric)), name = TRUE)
+```
+
+### Address Highly Correated Variables
+```{r}
 
 ```
 
