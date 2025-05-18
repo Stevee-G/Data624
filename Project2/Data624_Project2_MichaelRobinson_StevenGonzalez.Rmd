@@ -1,0 +1,130 @@
+---
+title: "Data 624 Project 2"
+authors: "Michael Robinson and Steven Gonzalez"
+date: "5/18/2025"
+output:
+  html_document: default
+  pdf_document: default
+---
+```{r setup, message=FALSE, warning=FALSE, include=FALSE}
+library(caret)
+library(corrplot)
+library(DMwR2)
+library(e1071)
+library(ggplot2)
+library(knitr)
+library(nnet)
+library(openxlsx)
+library(randomForest)
+library(readxl)
+
+set.seed(123)
+```
+## Introduction
+This is role playing.  I am your new boss.  I am in charge of production at ABC Beverage and you are a team of data scientists reporting to me.  My leadership has told me that new regulations are requiring us to understand our manufacturing process, the predictive factors and be able to report to them our predictive model of PH.
+
+Please use the historical data set I am providing.  Build and report the factors in BOTH a technical and non-technical report.  I like to use Word and Excel.  Please provide your non-technical report in a  business friendly readable document and your predictions in an Excel readable format.   The technical report should show clearly the models you tested and how you selected your final approach.
+
+## Data Exploration
+
+```{r}
+student_data <- read_excel()
+```
+
+
+## Data Preparation
+
+### Address Missing Data
+```{r message=FALSE, warning=FALSE}
+student_data <- read_excel("/Users/michaelrobinson/Library/Mobile Documents/com~apple~CloudDocs/Downloads/StudentData 2.xlsx", sheet = "Subset")
+miss_data <- data.frame(
+  Feature = names(student_data),
+  count_missing = colSums(is.na(student_data)),
+  percent_miss = colMeans(is.na(student_data)) * 100
+)
+print(miss_data)
+miss_scale <- 0.3
+student_data <- student_data[, colMeans(is.na(student_data)) <= miss_scale]
+student_data$PH_mean <- student_data$PH
+student_data$PH_mean[is.na(student_data$PH_mean)] <- mean(student_data$PH, na.rm = TRUE)
+student_data$PH_median <- student_data$PH
+student_data$PH_median[is.na(student_data$PH_median)] <- median(student_data$PH, na.rm = TRUE)
+scaled_data <- scale(student_data[sapply(student_data, is.numeric)])
+scaled_data <- as.data.frame(scaled_data)
+colnames(scaled_data) <- colnames(student_data)[sapply(student_data, is.numeric)]
+if (sum(complete.cases(scaled_data)) > 5) {
+  num_data <- knnImputation(scaled_data, k = 5)
+} else {
+  stop("impution not be completed, not enough cases")
+}
+num_data <- as.data.frame(num_data)
+X <- num_data[ , !names(num_data) %in% c("PH")]
+y <- num_data$PH
+set.seed(123)
+trainIndex <- createDataPartition(y, p = 0.8, list = FALSE)
+X_train <- X[trainIndex, ]
+X_test <- X[-trainIndex, ]
+y_train <- y[trainIndex]
+y_test <- y[-trainIndex]
+```
+
+### Address Degenerate Variables
+
+
+### Linear Regression Model
+```{r message=FALSE, warning=FALSE}
+linear_model <- train(X_train, y_train, method = "lm")
+linear_pred <- predict(linear_model, X_test)
+```
+### Decision Tree Model
+```{r message=FALSE, warning=FALSE}
+dt_model <- train(X_train, y_train, method = "rpart")
+dt_pred <- predict(dt_model, X_test)
+```
+### Random Forest Model
+```{r message=FALSE, warning=FALSE}
+rf_model <- train(X_train, y_train, method = "rf", ntree = 100)
+rf_pred <- predict(rf_model, X_test)
+```
+### Support Vector Machine (SVM) Model
+```{r message=FALSE, warning=FALSE}
+svm_model <- train(X_train, y_train, method = "svmRadial")
+svm_pred <- predict(svm_model, X_test)
+```
+### Neural Network Model
+```{r message=FALSE, warning=FALSE}
+nn_model <- train(X_train, y_train, method = "nnet", linout = TRUE, trace = FALSE, maxit = 500)
+nn_pred <- predict(nn_model, X_test)
+```
+## Model Evaluation
+```{r message=FALSE, warning=FALSE}
+model_results <- data.frame(
+  Model = c("Linear Regression", "Decision Tree", "Random Forest", "Support Vector Machine", "Neural Network"),
+  RMSE = c(postResample(linear_pred, y_test)[1],
+           postResample(dt_pred, y_test)[1],
+           postResample(rf_pred, y_test)[1],
+           postResample(svm_pred, y_test)[1],
+           postResample(nn_pred, y_test)[1]),
+  Rsquared = c(postResample(linear_pred, y_test)[2],
+               postResample(dt_pred, y_test)[2],
+               postResample(rf_pred, y_test)[2],
+               postResample(svm_pred, y_test)[2],
+               postResample(nn_pred, y_test)[2])
+)
+print(model_results)
+```
+## Model Performance Visualization
+```{r message=FALSE, warning=FALSE}
+plot1 <- ggplot(model_results, aes(x=Model, y=RMSE, fill=Model)) +
+  geom_bar(stat="identity", width=0.6) +
+  labs(title="Model RMSE Comparison", y="RMSE", x="Model") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+plot2 <- ggplot(model_results, aes(x=Model, y=Rsquared, fill=Model)) +
+  geom_bar(stat="identity", width=0.6) +
+  labs(title="Model R-Squared Comparison", y="R-Squared", x="Model") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+print(plot1)
+print(plot2)
+```
