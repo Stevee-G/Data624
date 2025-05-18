@@ -12,55 +12,126 @@ library(corrplot)
 library(DMwR2)
 library(e1071)
 library(ggplot2)
+library(kernlab)
 library(knitr)
 library(nnet)
 library(openxlsx)
 library(randomForest)
 library(readxl)
+library(tidyverse)
 
 set.seed(123)
 ```
-## Introduction
-This is role playing.  I am your new boss.  I am in charge of production at ABC Beverage and you are a team of data scientists reporting to me.  My leadership has told me that new regulations are requiring us to understand our manufacturing process, the predictive factors and be able to report to them our predictive model of PH.
+## Prompt
+This is role playing. I am your new boss. I am in charge of production at ABC Beverage and you are a team of data scientists reporting to me. My leadership has told me that new regulations are requiring us to understand our manufacturing process, the predictive factors and be able to report to them our predictive model of PH.
 
-Please use the historical data set I am providing.  Build and report the factors in BOTH a technical and non-technical report.  I like to use Word and Excel.  Please provide your non-technical report in a  business friendly readable document and your predictions in an Excel readable format.   The technical report should show clearly the models you tested and how you selected your final approach.
+Please use the historical data set I am providing. Build and report the factors in BOTH a technical and non-technical report. I like to use Word and Excel. Please provide your non-technical report in a business friendly readable document and your predictions in an Excel readable format. The technical report should show clearly the models you tested and how you selected your final approach.
+
+## Approach
+
 
 ## Data Exploration
 
-```{r}
-student_data <- read_excel("https://view.officeapps.live.com/op/view.aspx?src=https%3A%2F%2Fraw.githubusercontent.com%2FStevee-G%2FData624%2Frefs%2Fheads%2Fmain%2FProject2%2FTrainingData.xlsx&wdOrigin=BROWSELINK", sheet = "subset")
+
+### Load and View Data
+```{r message=FALSE, warning=FALSE}
+training <- read.csv("https://raw.githubusercontent.com/Stevee-G/Data624/refs/heads/main/Project2/TrainingData.csv")
+testing <- read.csv("https://raw.githubusercontent.com/Stevee-G/Data624/refs/heads/main/Project2/TestData.csv")
+
+str(training)
+str(testing)
 ```
 
+### Assess PH Distributions
+```{r message=FALSE, warning=FALSE}
+training %>% 
+  ggplot() + 
+  aes(x = PH) + 
+  geom_histogram(bins= 50) + 
+  facet_wrap(~ Brand.Code, scales = "free")
+```
+
+### Assess Predictor Distributions, Skewness, and Relationships
+```{r message=FALSE, warning=FALSE}
+training %>% 
+  select(where(is.numeric))%>% 
+  gather() %>% 
+  filter(!is.na(value)) %>% 
+  ggplot(aes(value)) +
+  geom_histogram(bins = 50) +
+  facet_wrap(~ key, scales = "free")
+
+training %>%
+  select(where(is.numeric))%>%
+  gather() %>%
+  filter(!is.na(value)) %>% 
+  ggplot(aes(value)) +
+  geom_boxplot() +
+  facet_wrap(~key, scales = "free")
+
+training_cor <- cor(training %>% 
+                      select(where(is.numeric)),
+                    use = "complete.obs")
+corrplot(training_cor)
+
+testing %>%
+  select(where(is.numeric)) %>%
+  gather() %>% 
+  filter(!is.na(value)) %>% 
+  ggplot(aes(value)) +
+  geom_histogram(bins = 50) +
+  facet_wrap(~ key, scales = "free")
+
+testing %>%
+  select(where(is.numeric)) %>%
+  gather() %>%
+  filter(!is.na(value)) %>% 
+  ggplot(aes(value)) +
+  geom_boxplot() +
+  facet_wrap(~key, scales = "free")
+
+testing_cor <- cor(testing %>% 
+                      select(where(is.numeric)),
+                    use = "complete.obs")
+corrplot(testing_cor)
+```
 
 ## Data Preparation
 
 ### Address Missing Data
 ```{r message=FALSE, warning=FALSE}
-student_data <- read_excel("/Users/michaelrobinson/Library/Mobile Documents/com~apple~CloudDocs/Downloads/StudentData 2.xlsx", sheet = "Subset")
 miss_data <- data.frame(
-  Feature = names(student_data),
-  count_missing = colSums(is.na(student_data)),
-  percent_miss = colMeans(is.na(student_data)) * 100
+  Feature = names(training),
+  count_missing = colSums(is.na(training)),
+  percent_miss = colMeans(is.na(training)) * 100
 )
 print(miss_data)
+
 miss_scale <- 0.3
-student_data <- student_data[, colMeans(is.na(student_data)) <= miss_scale]
-student_data$PH_mean <- student_data$PH
-student_data$PH_mean[is.na(student_data$PH_mean)] <- mean(student_data$PH, na.rm = TRUE)
-student_data$PH_median <- student_data$PH
-student_data$PH_median[is.na(student_data$PH_median)] <- median(student_data$PH, na.rm = TRUE)
-scaled_data <- scale(student_data[sapply(student_data, is.numeric)])
+training <- training[, colMeans(is.na(training)) <= miss_scale]
+
+training$PH_mean <- training$PH
+training$PH_mean[is.na(training$PH_mean)] <- mean(training$PH, na.rm = TRUE)
+training$PH_median <- training$PH
+training$PH_median[is.na(training$PH_median)] <- median(training$PH, na.rm = TRUE)
+
+scaled_data <- scale(training[sapply(training, is.numeric)])
 scaled_data <- as.data.frame(scaled_data)
-colnames(scaled_data) <- colnames(student_data)[sapply(student_data, is.numeric)]
+
+colnames(scaled_data) <- colnames(training)[sapply(training, is.numeric)]
+
 if (sum(complete.cases(scaled_data)) > 5) {
   num_data <- knnImputation(scaled_data, k = 5)
 } else {
   stop("impution not be completed, not enough cases")
 }
+
 num_data <- as.data.frame(num_data)
 X <- num_data[ , !names(num_data) %in% c("PH")]
 y <- num_data$PH
+
 set.seed(123)
+
 trainIndex <- createDataPartition(y, p = 0.8, list = FALSE)
 X_train <- X[trainIndex, ]
 X_test <- X[-trainIndex, ]
@@ -69,34 +140,46 @@ y_test <- y[-trainIndex]
 ```
 
 ### Address Degenerate Variables
+```{r message=FALSE, warning=FALSE}
 
+```
+
+## Assessing Models
+
+
+### Decision Tree Model
+```{r message=FALSE, warning=FALSE}
+dt_model <- train(X_train, y_train, method = "rpart")
+dt_pred <- predict(dt_model, X_test)
+```
 
 ### Linear Regression Model
 ```{r message=FALSE, warning=FALSE}
 linear_model <- train(X_train, y_train, method = "lm")
 linear_pred <- predict(linear_model, X_test)
 ```
-### Decision Tree Model
-```{r message=FALSE, warning=FALSE}
-dt_model <- train(X_train, y_train, method = "rpart")
-dt_pred <- predict(dt_model, X_test)
-```
-### Random Forest Model
-```{r message=FALSE, warning=FALSE}
-rf_model <- train(X_train, y_train, method = "rf", ntree = 100)
-rf_pred <- predict(rf_model, X_test)
-```
-### Support Vector Machine (SVM) Model
-```{r message=FALSE, warning=FALSE}
-svm_model <- train(X_train, y_train, method = "svmRadial")
-svm_pred <- predict(svm_model, X_test)
-```
+
 ### Neural Network Model
 ```{r message=FALSE, warning=FALSE}
 nn_model <- train(X_train, y_train, method = "nnet", linout = TRUE, trace = FALSE, maxit = 500)
 nn_pred <- predict(nn_model, X_test)
 ```
-## Model Evaluation
+
+### Random Forest Model
+```{r message=FALSE, warning=FALSE}
+rf_model <- train(X_train, y_train, method = "rf", ntree = 100)
+rf_pred <- predict(rf_model, X_test)
+```
+
+### Support Vector Machine (SVM) Model
+```{r message=FALSE, warning=FALSE}
+svm_model <- train(X_train, y_train, method = "svmRadial")
+svm_pred <- predict(svm_model, X_test)
+```
+
+## Model Performance Evaluation and Visualization
+
+
 ```{r message=FALSE, warning=FALSE}
 model_results <- data.frame(
   Model = c("Linear Regression", "Decision Tree", "Random Forest", "Support Vector Machine", "Neural Network"),
@@ -112,9 +195,7 @@ model_results <- data.frame(
                postResample(nn_pred, y_test)[2])
 )
 print(model_results)
-```
-## Model Performance Visualization
-```{r message=FALSE, warning=FALSE}
+
 plot1 <- ggplot(model_results, aes(x=Model, y=RMSE, fill=Model)) +
   geom_bar(stat="identity", width=0.6) +
   labs(title="Model RMSE Comparison", y="RMSE", x="Model") +
@@ -128,3 +209,4 @@ plot2 <- ggplot(model_results, aes(x=Model, y=Rsquared, fill=Model)) +
 print(plot1)
 print(plot2)
 ```
+
