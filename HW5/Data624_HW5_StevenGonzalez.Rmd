@@ -17,7 +17,7 @@ library(USgas)
 ## Exercise 1
 Consider the the number of pigs slaughtered in Victoria, available in the `aus_livestock` dataset.
 
-Use the `ETS()` function to estimate the equivalent model for simple exponential smoothing. Find the optimal values of alpha and lo, and generate forecasts for the next four months.
+Use the `ETS()` function to estimate the equivalent model for simple exponential smoothing. Find the optimal values of alpha and l[0], and generate forecasts for the next four months.
 ```{r message=FALSE, warning=FALSE}
 vic_pigs <- aus_livestock %>%
   filter(!is.na(Count)) %>% 
@@ -38,7 +38,7 @@ pfit %>%
              filter(year(Month) >= 2009))
 ```
 
-
+As seen above, the optimal values for alpha and l[0] are 0.3221247 and 100646.6, respectively. Both the table and the plot of the forecast for the next four months are displayed. The years were filtered to start at 2009 in order to better see the forecast in the graph.
 
 Compute a 95% prediction interval for the first forecast using y ± 1.96s where s is the standard deviation of the residuals. Compare your interval with the interval produced by R.
 ```{r message=FALSE, warning=FALSE}
@@ -58,7 +58,7 @@ pfc_hilo <- pfc %>%
 pfc_hilo$`95%`[1]
 ```
 
-
+As can be seen from the resulting values for y ± 1.96s, there is not much difference between prediction interval for the first forecast and the interval produced by R.
 
 ## Exercise 5
 Data set `global_economy` contains the annual Exports from many countries. Select one country to analyse.
@@ -79,7 +79,7 @@ pr_exp %>%
   labs(title = 'Puerto Rico Exports')
 ```
 
-
+The main features for the above plot on exports from Puerto Rico illustrate an upward trend with dips between the years 1995-2000 and 2010-2015.
 
 Use an ETS(A,N,N) model to forecast the series, and plot the forecasts.
 ```{r message=FALSE, warning=FALSE}
@@ -92,8 +92,6 @@ pr_fit %>%
   forecast(h = 5) %>% 
   autoplot(pr_exp)
 ```
-
-
 
 Compute the RMSE values for the training data.
 ```{r message=FALSE, warning=FALSE}
@@ -112,6 +110,8 @@ pr_fit1 %>%
   accuracy()
 ```
 
+An ETS(A,A,N), or Holt, model fairs slightly better than the ETS(A,N,N), SES, model with just a small decrease in RMSE but much more meaningful decrease in other error measures such as ME and MPE. This is to be expected since the Holt model takes trend into consideration and this data set has a clear trend to be taken into account.
+
 Compare the forecasts from both methods. Which do you think is best?
 ```{r message=FALSE, warning=FALSE}
 pr_exp %>% 
@@ -126,7 +126,7 @@ pr_exp %>%
   autoplot(pr_exp)
 ```
 
-
+Give the above plot, the Holt model seems to be the better option for forecasting this data set.
 
 Calculate a 95% prediction interval for the first forecast for each model, using the RMSE values and assuming normal errors. Compare your intervals with those produced using R.
 ```{r message=FALSE, warning=FALSE}
@@ -167,7 +167,7 @@ pr_fc_hilo1$`95%`[1]
 
 Above is the comparison using the Holt model.
 
-
+Both calculated intervals, SES and Holt, fall within their respective R intervals. Interestingly enough, the calculated Holt interval seems to be narrower when compared to its R output versus the SES interval.
 
 ## Exercise 6
 Forecast the Chinese GDP from the `global_economy` data set using an ETS model. Experiment with the various options in the `ETS()` function to see how much the forecasts change with damped trend, or with a Box-Cox transformation. Try to develop an intuition of what each is doing to the forecasts.
@@ -196,7 +196,7 @@ cfit %>%
   labs(title = 'China GDP Forecast')
 ```
 
-
+A forecast of 20 years was chosen in order to clearly see the effects of each model. Of the three, SES, Holt, and Damped, Holt seems to have preformed better as seen error table and the plot.
 
 ## Exercise 7
 Find an ETS model for the Gas data from `aus_production` and forecast the next few years. Why is multiplicative seasonality necessary here? Experiment with making the trend damped. Does it improve the forecasts?
@@ -223,7 +223,7 @@ gfit %>%
   accuracy()
 ```
 
-
+Multiplicative seasonality is necessary for this forecast due to the data sets seasonal nature. As seen above, the multiplicative damping model does seem to perform slightly better than the rest.
 
 ## Exercise 8
 Recall your retail time series data (from Exercise 7 in Section 2.10).
@@ -238,7 +238,7 @@ autoplot(myseries) +
 
 Why is multiplicative seasonality necessary for this series?
 
-
+Multiplicative seasonality is necessary for this series because of its clear seasonal nature.
 
 Apply Holt-Winters’ multiplicative method to the data. Experiment with making the trend damped.
 ```{r message=FALSE, warning=FALSE}
@@ -258,7 +258,7 @@ mfit %>%
   accuracy()
 ```
 
-
+As seen in the error table above, the simple multiplicative model shows clear dominance over the damped multiplicative model for this series.
 
 Check that the residuals from the best method look like white noise.
 ```{r message=FALSE, warning=FALSE}
@@ -266,7 +266,12 @@ mfit1 <- myseries %>%
   model(mult = ETS(Turnover ~ error('M') + trend('A') + season('M')))
 
 mfit1 %>% gg_tsresiduals()
+
+augment(mfit1) %>%
+  features(.resid, ljung_box, lag=10)
 ```
+
+The above visuals show that innovation residuals plot have near constant variation but some potential outliers. This is later confirmed through the various lags that surpass the boundaries provided in the acf plot, hinting that there is more than white noise. If these two observations weren't enough, a Ljung-Box test was conducted which led to a large Q* value and significant p-value, indicating that this is indeed not just white noise.
 
 Now find the test set RMSE, while training the model to the end of 2010. Can you beat the seasonal naïve approach from Exercise 7 in Section 5.11?
 ```{r message=FALSE, warning=FALSE}
@@ -280,14 +285,51 @@ fc <- mfit_sn %>%
   forecast(new_data = anti_join(myseries, myseries_train))
 fc %>%
   autoplot(myseries)
+
+mfit_mam <- myseries_train %>% 
+  model(mult = ETS(Turnover ~ error('M') + trend('A') + season('M')))
+
+fc1 <- mfit_mam %>% 
+  forecast(new_data = anti_join(myseries, myseries_train))
+fc1 %>%
+  autoplot(myseries)
+
+fc %>% 
+  accuracy(myseries)
+fc1 %>% 
+  accuracy(myseries)
 ```
 
-
+As can be seen above, the multiplicative model did indeed beat the seasonal naive model with a huge reduction in RMSE and a much more consistent alignment with the test data.
 
 ## Exercise 9
 For the same retail data, try an STL decomposition applied to the Box-Cox transformed series, followed by ETS on the seasonally adjusted data. How does that compare with your best previous forecasts on the test set?
 ```{r message=FALSE, warning=FALSE}
+myseries_train %>% 
+  model(stl = STL(Turnover)) %>%
+  components() %>%
+  autoplot()
 
+lambda <- myseries_train %>% 
+  features(Turnover, features = guerrero) %>% 
+  pull(lambda_guerrero)
+
+myseries_train %>% 
+  model(stl = STL(box_cox(Turnover, lambda))) %>%
+  components() %>%
+  autoplot()
+
+mfit_mam_bc <- myseries_train %>%
+  model(mam_bc = ETS(box_cox(Turnover, lambda) ~ error('M') + trend('A') + season('M')))
+
+fc1_bc <- mfit_mam_bc %>%
+  forecast(new_data = anti_join(myseries, myseries_train))
+
+fc1_bc %>%
+  autoplot(myseries)
+
+fc1_bc %>% 
+  accuracy(myseries)
 ```
 
-
+Interestingly enough, applying a Box-Cox transformation to the multiplicative model ended up making the result worse with a huge jump in RMSE from just 20.61 to 73.55, indicative a degenerating effect on the model for this particular series.
