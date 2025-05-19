@@ -1,6 +1,6 @@
 ---
 title: "Data 624 Project 2: pH Prediction in Beverage Manufacturing"
-authors: "Michael Robinson and Steven Gonzalez"
+author: "Michael Robinson and Steven Gonzalez"
 date: "5/18/2025"
 output:
   html_document: default
