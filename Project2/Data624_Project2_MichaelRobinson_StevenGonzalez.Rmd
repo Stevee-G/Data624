@@ -307,7 +307,7 @@ testing <- testing %>%
   select(-c(PH, Balling, Hyd.Pressure1, Hyd.Pressure3, Alch.Rel, Density, Filler.Level)) %>% 
   mutate(PH = "")
 
-pred <- predict(nn_model, testing)
+pred <- predict(dt_model, testing)
 
 testing$PH <- pred
 
