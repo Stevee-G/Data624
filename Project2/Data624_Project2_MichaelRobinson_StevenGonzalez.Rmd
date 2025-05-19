@@ -11,6 +11,7 @@ library(caret)
 library(corrplot)
 library(DMwR2)
 library(e1071)
+library(gbm)
 library(ggplot2)
 library(kernlab)
 library(knitr)
@@ -19,6 +20,7 @@ library(openxlsx)
 library(randomForest)
 library(readxl)
 library(tidyverse)
+library(VIM)
 
 set.seed(123)
 ```
@@ -106,35 +108,45 @@ corrplot(testing_cor)
 
 ### Address Missing Data
 ```{r message=FALSE, warning=FALSE}
-miss_data <- data.frame(
-  Feature = names(training),
-  count_missing = colSums(is.na(training)),
-  percent_miss = colMeans(is.na(training)) * 100
-)
-print(miss_data)
+training %>%
+  select(c(2:33)) %>% 
+  summarize_all(funs(sum(is.na(.)))) %>% 
+  pivot_longer(everything(),
+               names_to = 'Predictor',
+               values_to = 'Number of Missing Values')
 
-miss_scale <- 0.3
-training <- training[, colMeans(is.na(training)) <= miss_scale]
+training <- kNN(training, k = 5) %>% 
+  select(c(1:33))
 
-training$PH_mean <- training$PH
-training$PH_mean[is.na(training$PH_mean)] <- mean(training$PH, na.rm = TRUE)
-training$PH_median <- training$PH
-training$PH_median[is.na(training$PH_median)] <- median(training$PH, na.rm = TRUE)
+training %>%
+  select(c(2:33)) %>% 
+  summarize_all(funs(sum(is.na(.)))) %>% 
+  pivot_longer(everything(),
+               names_to = 'Predictor',
+               values_to = 'Number of Missing Values')
+```
 
-scaled_data <- scale(training[sapply(training, is.numeric)])
-scaled_data <- as.data.frame(scaled_data)
+### Address Degenerate Variables
+```{r message=FALSE, warning=FALSE}
+nearZeroVar(training %>% 
+              select(c(2:33)), name = TRUE)
+training <- training %>% 
+  select(-Hyd.Pressure1)
+```
 
-colnames(scaled_data) <- colnames(training)[sapply(training, is.numeric)]
+### Address Highly Correated Variables
+```{r message=FALSE, warning=FALSE}
+findCorrelation(testing_cor, cutoff = 0.9, names = TRUE)
+training <- training %>% 
+  select(-c(Balling, Hyd.Pressure3, Alch.Rel, Density, Filler.Level))
+```
 
-if (sum(complete.cases(scaled_data)) > 5) {
-  num_data <- knnImputation(scaled_data, k = 5)
-} else {
-  stop("impution not be completed, not enough cases")
-}
+## Assessing Models
 
-num_data <- as.data.frame(num_data)
-X <- num_data[ , !names(num_data) %in% c("PH")]
-y <- num_data$PH
+### The
+```{r}
+X <- training[ , !names(training) %in% c("PH")]
+y <- training$PH
 
 set.seed(123)
 
@@ -144,20 +156,6 @@ X_test <- X[-trainIndex, ]
 y_train <- y[trainIndex]
 y_test <- y[-trainIndex]
 ```
-
-### Address Degenerate Variables
-```{r message=FALSE, warning=FALSE}
-nearZeroVar(training %>% 
-              select(where(is.numeric)), name = TRUE)
-```
-
-### Address Highly Correated Variables
-```{r}
-
-```
-
-## Assessing Models
-
 
 ### Decision Tree Model
 ```{r message=FALSE, warning=FALSE}
@@ -191,7 +189,6 @@ svm_pred <- predict(svm_model, X_test)
 
 ## Model Performance Evaluation and Visualization
 
-
 ```{r message=FALSE, warning=FALSE}
 model_results <- data.frame(
   Model = c("Linear Regression", "Decision Tree", "Random Forest", "Support Vector Machine", "Neural Network"),
@@ -221,4 +218,26 @@ plot2 <- ggplot(model_results, aes(x=Model, y=Rsquared, fill=Model)) +
 print(plot1)
 print(plot2)
 ```
+
+## Prediction and File Export
+```{r }
+testing <- testing %>%
+  select(-c(PH, Balling, Hyd.Pressure1, Hyd.Pressure3, Alch.Rel, Density, Filler.Level)) %>% 
+  mutate(PH = "")
+
+pred <- predict(dt_model, testing)
+
+testing$PH <- pred
+
+excel <- createWorkbook()
+addWorksheet(excel, "PH Prediction")
+writeData(excel, sheet = "PH Prediction", testing)
+saveWorkbook(excel, "TestData.xlsx", overwrite = TRUE)
+```
+
+## Conclusion
+
+
+
+
 
