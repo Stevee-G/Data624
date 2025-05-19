@@ -1,5 +1,5 @@
 ---
-title: "Data 624 Project 2"
+title: "Data 624 Project 2: pH Prediction in Beverage Manufacturing"
 authors: "Michael Robinson and Steven Gonzalez"
 date: "5/18/2025"
 output:
@@ -145,8 +145,18 @@ training <- training %>%
 
 ### Training Data Partitioning
 ```{r message=FALSE, warning=FALSE}
-X <- training[, !names(training) %in% c("PH")]
-y <- training$PH
+scaled_data <- scale(training[sapply(training, is.numeric)])
+scaled_data <- as.data.frame(scaled_data)
+colnames(scaled_data) <- colnames(training)[sapply(training, is.numeric)]
+
+if (sum(complete.cases(scaled_data)) > 5) {
+  num_data <- knnImputation(scaled_data, k = 5)
+} else {
+  stop("impution not be completed, not enough cases")
+}
+num_data <- as.data.frame(num_data)
+X <- num_data[ , !names(num_data) %in% c("PH")]
+y <- num_data$PH
 
 set.seed(123)
 
@@ -261,7 +271,7 @@ svm_model <- train(
   x = X_train, 
   y = y_train,
   method = "svmRadial",
-  trControl = ctrl_simple,
+  trControl = ctrl,
   tuneGrid = svm_grid,
   metric = "RMSE"
 )
