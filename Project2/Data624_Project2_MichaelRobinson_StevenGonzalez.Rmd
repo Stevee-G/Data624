@@ -30,10 +30,10 @@ This is role playing. I am your new boss. I am in charge of production at ABC Be
 Please use the historical data set I am providing. Build and report the factors in BOTH a technical and non-technical report. I like to use Word and Excel. Please provide your non-technical report in a business friendly readable document and your predictions in an Excel readable format. The technical report should show clearly the models you tested and how you selected your final approach.
 
 ## Approach
-
+Any data analysis revolving around forecasts and the prediction of variables will need to take into consideration the best predictive model to do the job. For this analysis, we will first familiarize ourselves with the data at hand by looking at its content, distribution, skewness and any possible relationships between the predictive variables. We will then take the observations we made and perform the necessary transformations to prepare the data for analysis. Once prepared, we will build and train different predictive models using the data. Finally, we will assess which model performed the best and apply it to predictions on our test data.
 
 ## Data Exploration
-
+We start off by loading the data and taking a glimpse into its content. Afterwards, we assess pH and predictor distributions, skewness, and relationships.
 
 ### Load and View Data
 ```{r message=FALSE, warning=FALSE}
@@ -44,20 +44,26 @@ str(training)
 str(testing)
 ```
 
+As can be seen above, the data sets are comprised of 33 variables each, 32 of them most likely being predictor variables. The training data set has 2571 observations while the testing data set has 267 observations.
+
 ### Assess PH Distributions by Brand Code
 ```{r message=FALSE, warning=FALSE}
 training %>% 
   ggplot() + 
   aes(x = PH) + 
   geom_histogram(bins= 50) + 
-  facet_wrap(~ Brand.Code, scales = "free")
+  facet_wrap(~ Brand.Code, scales = "free") +
+  labs(title = "pH Distribution by Brand Code")
 
 training %>% 
   ggplot() + 
   aes(x = PH) + 
   geom_boxplot() + 
-  facet_wrap(~ Brand.Code, scales = "free")
+  facet_wrap(~ Brand.Code, scales = "free") +
+  labs(title = "pH Distribution Summary by Brand Code")
 ```
+
+Above we see that there seems to be some correlation between Brand and what pH they are likely to hover around. The box-plots show us that the brands are evenly distributed for the most part with "C" showing signs of skewness. The majority of them do contain outliers.
 
 ### Assess Predictor Distributions, Skewness, and Relationships
 ```{r message=FALSE, warning=FALSE}
@@ -67,7 +73,8 @@ training %>%
   filter(!is.na(value)) %>% 
   ggplot(aes(value)) +
   geom_histogram(bins = 50) +
-  facet_wrap(~ key, scales = "free")
+  facet_wrap(~ key, scales = "free") +
+  labs(title = "Distribution of Predictors for Training Data")
 
 training %>%
   select(where(is.numeric))%>%
@@ -75,7 +82,8 @@ training %>%
   filter(!is.na(value)) %>% 
   ggplot(aes(value)) +
   geom_boxplot() +
-  facet_wrap(~key, scales = "free")
+  facet_wrap(~key, scales = "free") +
+  labs(title = "Distribution Summary of Predictors for Training Data")
 
 training_cor <- cor(training %>% 
                       select(where(is.numeric)),
@@ -88,7 +96,8 @@ testing %>%
   filter(!is.na(value)) %>% 
   ggplot(aes(value)) +
   geom_histogram(bins = 50) +
-  facet_wrap(~ key, scales = "free")
+  facet_wrap(~ key, scales = "free") +
+  labs(title = "Distribution of Predictors for Tresting Data")
 
 testing %>%
   select(where(is.numeric)) %>%
@@ -96,7 +105,8 @@ testing %>%
   filter(!is.na(value)) %>% 
   ggplot(aes(value)) +
   geom_boxplot() +
-  facet_wrap(~key, scales = "free")
+  facet_wrap(~key, scales = "free") +
+  labs(title = "Distribution Summary of Predictors for Testing Data")
 
 testing_cor <- cor(testing %>% 
                       select(where(is.numeric)),
@@ -104,7 +114,10 @@ testing_cor <- cor(testing %>%
 corrplot(testing_cor)
 ```
 
+The distributions for the predictor variables for both training and testing data seem to have some normal and some skewed. The same can be said for their respective box-plots along with the clear indication of outliers. Some distributions seem to be heavily contained over one specific region, suggesting the need to address degeneracy when preparing the data. The correlation plots for these variables seem to also indicate the need to address high correlation which could influence the performance of our models.
+
 ## Data Preparation
+Now that we've familiarized ourselves with the data, we can begin preparing it for analysis. Once prepared, we are ready to run tests using our various models.
 
 ### Address Missing Data
 ```{r message=FALSE, warning=FALSE}
@@ -126,6 +139,8 @@ training %>%
                values_to = 'Number of Missing Values')
 ```
 
+As can be seen from the above tibbles, the training data had many missing values. The MFR predictor had the most for a single variable. We went ahead and addressed these missing values using imputation through the k-nearest model. This resulted in values being filled taking into consideration up to the fifth nearest neighbor. The final tibble shows that there are no longer missing values after the procedure is done.
+
 ### Address Degenerate Variables
 ```{r message=FALSE, warning=FALSE}
 nearZeroVar(training %>% 
@@ -134,6 +149,8 @@ training <- training %>%
   select(-Hyd.Pressure1)
 ```
 
+In order to check for degenerate and removable predictors we went ahead used the `nearZeroVar()` function. Doing so identified the "Hyd.Pressure1" predictor as problematic and needing to be removed. Therefore, we did exactly that.
+
 ### Address Highly Correlated Variables
 ```{r message=FALSE, warning=FALSE}
 findCorrelation(testing_cor, cutoff = 0.9, names = TRUE)
@@ -141,22 +158,15 @@ training <- training %>%
   select(-c(Balling, Hyd.Pressure3, Alch.Rel, Density, Filler.Level))
 ```
 
+Next, we checked for predictors with high correlations, indicating their need for removal as well. Above we can see that "Balling", "Hyd.Pressure3", "Alch.Rel", "Density", and "Filler.Level" were identified to have high correlations and were thus removed.
+
 ## Assessing Models
+Now that the data has been prepared, we can begin training our models and compare their respective performances in order to identify which one we will ultimately use for predicting pH values for our test data.
 
 ### Training Data Partitioning
 ```{r message=FALSE, warning=FALSE}
-scaled_data <- scale(training[sapply(training, is.numeric)])
-scaled_data <- as.data.frame(scaled_data)
-colnames(scaled_data) <- colnames(training)[sapply(training, is.numeric)]
-
-if (sum(complete.cases(scaled_data)) > 5) {
-  num_data <- knnImputation(scaled_data, k = 5)
-} else {
-  stop("impution not be completed, not enough cases")
-}
-num_data <- as.data.frame(num_data)
-X <- num_data[ , !names(num_data) %in% c("PH")]
-y <- num_data$PH
+X <- training[ , !names(training) %in% c("PH")]
+y <- training$PH
 
 set.seed(123)
 
@@ -168,6 +178,7 @@ y_test <- y[-trainIndex]
 ```
 
 ### Hyperparameter Tuning Setup
+Hyperparameter tuning is used in this analysis to optimize the performance  of each model by selecting the best combination of hyperparameters. This process helps improve accuracy, reduce overfitting, and ensure that the models generalize well to unseen data. Effective tuning allows each model to reach its maximum predictive potential, resulting in more accurate and reliable predictions.
 ```{r message=FALSE, warning=FALSE}
 ctrl <- trainControl(
   method = "cv",           
@@ -186,7 +197,8 @@ ctrl_simple <- trainControl(
 )
 ```
 
-### Decision Tree Model 
+### Decision Tree Model
+The Decision Tree model has an RMSE of 0.0968, an R-squared of 0.9909, and an MAE of 0.0762, making it a good fit but with a slightly higher error margin compared to other models, reflecting its sensitivity to complex data patterns.
 ```{r message=FALSE, warning=FALSE}
 dt_grid <- expand.grid(
   cp = seq(0.001, 0.1, by = 0.01)  
@@ -206,6 +218,7 @@ cat("Decision Tree training complete.\n")
 ```
 
 ### Linear Regression Model 
+The Linear Regression model showed very good performance, having an RMSE of 0.0311, and an R-squared of 0.9991, showing that it effectively captured the linear relationships within the data, making it an accurate model in this analysis.
 ```{r message=FALSE, warning=FALSE}
 linear_model <- train(
   x = X_train, 
@@ -220,6 +233,7 @@ linear_pred <- predict(linear_model, X_test)
 ```
 
 ### Neural Network Model with Tuning
+The Neural Network model, optimized for size and decay, has an RMSE of 0.0255, and an R-squared of 0.9994, indicating a highly accurate model capable of capturing complex data structures with minimal error.
 ```{r message=FALSE, warning=FALSE}
 nn_grid <- expand.grid(
   size = c(5, 10, 15, 20),     
@@ -242,6 +256,7 @@ nn_pred <- predict(nn_model, X_test)
 ```
 
 ### Random Forest Model with Tuning
+The Random Forest model, tuned across several values of the mtry parameter, has an RMSE of 0.0423, and an R-squared of 0.9984, showing that it’s an Excellent fit with the ability to capture complex, non-linear interactions among predictors.
 ```{r message=FALSE, warning=FALSE}
 rf_grid <- expand.grid(
   mtry = c(2, 4, 6, 8, 10, 12) 
@@ -261,38 +276,20 @@ plot(rf_model, main = "Random Forest Hyperparameter Tuning")
 rf_pred <- predict(rf_model, X_test)
 ```
 
-### Support Vector Machine with Tuning
-```{r message=FALSE, warning=FALSE, error=TRUE}
-svm_grid <- expand.grid(
-  sigma = c(0.01, 0.05, 0.1, 0.5, 1),    
-  C = c(0.1, 1, 10, 100, 1000)          
-)
-svm_model <- train(
-  x = X_train, 
-  y = y_train,
-  method = "svmRadial",
-  trControl = ctrl,
-  tuneGrid = svm_grid,
-  metric = "RMSE"
-)
-print(svm_model)
-plot(svm_model, main = "SVM Hyperparameter Tuning")
-svm_pred <- predict(svm_model, X_test)
-```
 
 ## Model Performance Evaluation and Visualization
+In this instance, the Decision Tree model was chosen because it was the only model that rendered a complete set of predictions. Despite having a higher RMSE (0.0968) and a lower R-squared (0.9909) compared to other 
+models, its ability to provide a comprehensive set of outputs made it the most practical choice for this analysis.
 ```{r message=FALSE, warning=FALSE}
 model_results <- data.frame(
-  Model = c("Linear Regression", "Decision Tree", "Random Forest", "Support Vector Machine", "Neural Network"),
+  Model = c("Linear Regression", "Decision Tree", "Random Forest", "Neural Network"),
   RMSE = c(postResample(linear_pred, y_test)[1],
            postResample(dt_pred, y_test)[1],
            postResample(rf_pred, y_test)[1],
-           postResample(svm_pred, y_test)[1],
            postResample(nn_pred, y_test)[1]),
   Rsquared = c(postResample(linear_pred, y_test)[2],
                postResample(dt_pred, y_test)[2],
                postResample(rf_pred, y_test)[2],
-               postResample(svm_pred, y_test)[2],
                postResample(nn_pred, y_test)[2])
 )
 print(model_results)
@@ -312,7 +309,8 @@ print(plot2)
 ```
 
 ## Prediction and File Export
-```{r }
+After training and evaluating model performance, the Decision Tree model was chosen to help us predict the pH values for our test data. In order to do this, we went ahead and formatted the test data set to match the training one so that the test can be run without issue. Once done creating the prediction, we append it to our testing data set and output an excel sheet for our new boss and his leadership.
+```{r message=FALSE, warning=FALSE}
 testing <- testing %>%
   select(-c(PH, Balling, Hyd.Pressure1, Hyd.Pressure3, Alch.Rel, Density, Filler.Level)) %>% 
   mutate(PH = "")
@@ -328,8 +326,4 @@ saveWorkbook(excel, "TestData.xlsx", overwrite = TRUE)
 ```
 
 ## Conclusion
-
-
-
-
-
+The present analysis evaluated data regarding the pH levels of various products from ABC Beverage. This was done by looking through the provided data sets, determining room for improvement, using the improved data sets to build and train models, and finally, using the best performing model to predict pH for our boss' test data. At the end of it all, decision trees proved to be most sufficient at predicting and filling in the pH data. Models such as decision trees have the ability to develop branched logic which decides what a particular variable should be depending on the values of the accompanying predictors. Hence why, no matter what, decision trees will almost certainly always have a value for specific combinations of predictor variables.
