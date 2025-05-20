@@ -154,18 +154,36 @@ postResample(pred = svm_pred1, obs = test.data$Yield)
 
 Which nonlinear regression model gives the optimal resampling and test set performance?
 
-
+As can be seen in the results above, after running KNN, neural network, MARS, and SVM models, the SVM model had the best performance with an RMSE of 1.2625926, R^2 of 0.6915330, and MAE of 0.9494307.
 
 Which predictors are most important in the optimal nonlinear regression model? Do either the biological or process variables dominate the list? How do the top ten important predictors compare to the top ten predictors from the optimal linear model?
 ```{r message=FALSE, warning=FALSE}
+varImp(svm_model1)
 
+ridge_grid1 <- data.frame(.lambda = seq(0.001, 0.5, length = 25))
+ridge_model1 <- train(Yield ~ .,
+                     data = train.data,
+                     method = "ridge",
+                     metric = "Rsquared",
+                     tuneGrid = ridge_grid1,
+                     trControl = ctrl1,
+                     preProc = c("center", "scale"))
+
+varImp(ridge_model1)
 ```
 
-
+The first of the above data frames displays which predictors are most important in the SVM nonlinear regression model built previously. Out of the top 10 predictors, it seems like the process variables dominate the list. Compared to the the top 10 predictors from the optimal linear model (the ridge model seen above), the top 10 important predictors from this model are exactly the same but just slightly reordered when compared to the results from the previous chapter's exercise.
 
 Explore the relationships between the top predictors and the response for the predictors that are unique to the optimal nonlinear regression model. Do these plots reveal intuition about the biological or process predictors and their relationship with yield?
 ```{r message=FALSE, warning=FALSE}
-
+cmp_cor <- cor(cmp %>% 
+                       select(ManufacturingProcess32, ManufacturingProcess13,
+                              BiologicalMaterial06, ManufacturingProcess36,
+                              ManufacturingProcess17, ManufacturingProcess09,
+                              ManufacturingProcess31, BiologicalMaterial02,
+                              BiologicalMaterial12, BiologicalMaterial03,
+                              Yield))
+corrplot::corrplot(cmp_cor)
 ```
 
-
+As was seen when we previously assessed the `ChemicalManufacturingProcess` data set, the correlation between predictors and yield gives us intuition on the the processes and materials which have a higher correlation with yield leading to higher outcomes and which variables have high correlations to each other displaying which ones can be removed and which ones can be focused more on to acquire better results.
