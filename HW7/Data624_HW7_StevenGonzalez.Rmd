@@ -44,7 +44,7 @@ fp_filtered <- fingerprints[,-low_freq_preds]
 str(fp_filtered)
 ```
 
-
+As can be seen from the results above, 719 of the predictors had low frequencies and were thus filtered out. Leaving us with 388 predictors for modeling.
 
 Split the data into a training and a test set, pre-process the data, and tune a PLS model. How many latent variables are optimal and what is the corresponding resampled estimate of R^2?
 ```{r message=FALSE, warning=FALSE}
@@ -69,7 +69,7 @@ pls_model <- train(x = Xtrain.data,
 pls_model
 ```
 
-
+As can be seen in the results above, anywhere from 3 to 6 components could prove optimal. A number of 3 components gives us our highest value for R^2, 0.5306144, and a number of 6 components leads to our lowest values of RMSE and MAE, 11.30635 and 8.170254, respectively.
 
 Predict the response for the test set. What is the test set estimate of R^2?
 ```{r message=FALSE, warning=FALSE}
@@ -82,7 +82,7 @@ cbind(
 )
 ```
 
-
+The test set estimate of R^2 is 0.2213123.
 
 Try building other models discussed in this chapter. Do any have better predictive performance?
 ```{r message=FALSE, warning=FALSE}
@@ -115,11 +115,11 @@ cbind(RMSE = RMSE(ridge_prediction, ytest.data),
       "R^2" = caret::R2(ridge_prediction, ytest.data))
 ```
 
-
+Above, I tried the linear and ridge models. Between the two of them, the ridge model had a better predictive performance than the pls model with an RMSE of 13.29316 and an R^2 of 0.3486511.
 
 Would you recommend any of your models to replace the permeability laboratory experiment?
 
-
+Yes, given that the ridge model outperformed the pls model, I would definitely choose that one to replace the permeability laboratory experiment.
 
 ## Exercise 3
 A chemical manufacturing process for a pharmaceutical product was discussed in Sect. 1.4. In this problem, the objective is the understand the relationship between biological measurements of the raw materials (predictors), measurements of the manufacturing process (predictors), and the response of product yield. Biological predictors cannot be changed but can be used to assess the quality of the raw material before processing. On the other hand, manufacturing process predictors can be changed in the manufacturing process. Improving product yield by 1 % will boost revenue by approximately one hundred thousand dollars per batch.
@@ -176,25 +176,24 @@ ridge_model1 <- train(Yield ~ .,
                      trControl = ctrl1,
                      preProc = c("center", "scale"))
 
-ridge_model1$results %>%
-  inner_join(ridge_model1$bestTune)
+ridge_model1$results[ridge_model1$results$RMSE == min(ridge_model1$results$RMSE),]
 ```
 
-
+Given the results above, it seems that the optimal value of the performance metric occurs at `ncomp` = 12 with an RMSE of 1.697949 and an R^2 of 0.500405.
 
 Predict the response for the test set. What is the value of the performance metric and how does this compare with the resampled performance metric on the training set?
 ```{r message=FALSE, warning=FALSE}
 postResample(pred = predict(ridge_model1, test.data), obs =test.data$Yield)
 ```
 
-
+Predicting the response for the test set using our ridge model renders the above values for the performance metrics. The RMSE, R^2, and MAE have values of 1.4486942, 0.6122705, and 1.1432855, respectively. Compared to the resampled performance metrics on the training set, it seems to have done better with lower error rate and a higher R^2.
 
 Which predictors are most important in the model you have trained? Do either the biological or process predictors dominate the list?
 ```{r message=FALSE, warning=FALSE}
 plot(varImp(ridge_model1), top = 10)
 ```
 
-
+Above is a plot illustrating the predictors which are most important in the previous ridge model I've trained. As can be seen, the process predictors dominate the list.
 
 Explore the relationships between each of the top predictors and the response. How could this information be helpful in improving yield in future runs of the manufacturing process?
 ```{r message=FALSE, warning=FALSE}
@@ -203,8 +202,9 @@ cmp_cor <- cor(cmp_prepared %>%
                               ManufacturingProcess36, BiologicalMaterial06,
                               ManufacturingProcess31, ManufacturingProcess17,
                               BiologicalMaterial02, ManufacturingProcess09,
-                              BiologicalMaterial12, BiologicalMaterial03))
+                              BiologicalMaterial12, BiologicalMaterial03,
+                              Yield))
 corrplot::corrplot(cmp_cor)
 ```
 
-
+Strictly with regards to the response, or yield given the predictor, this information could be helpful in improving yield in future runs of the manufacturing process by pouring more time and resources into the processes which have a higher correlation with yield, meaning that these predictors lead to higher outcome. When it comes to inter-predictor relationships, identifying which variables have high correlations to each other could indicate the need for removal in order to optimize resources.
