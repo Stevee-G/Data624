@@ -25,13 +25,12 @@ Part A – ATM Forecast, ATM624Data.xlsx
 In part A, I want you to forecast how much cash is taken out of 4 different ATM machines for May 2010. The data is given in a single file. The variable ‘Cash’ is provided in hundreds of dollars, other than that it is straight forward. I am being somewhat ambiguous on purpose to make this have a little more business feeling. Explain and demonstrate your process, techniques used and not used, and your actual forecast. I am giving you data via an excel file, please provide your written report on your findings, visuals, discussion and your R code via an RPubs link along with the actual.rmd file. Also please submit the forecast which you will put in an Excel readable file.
 
 ## Approach
-
+We've been tasked with analyzing historical ATM data and forecasting what the next month of transactions could look like. As with any good analysis, we must start off by getting familiar with the data. Afterwards we address any issues we may have found in the data that could impede a smooth analysis. Then, once prepared, we begin testing different forecast models to try and see which one fits best. Finally, we use the best fit model to forecast the solicited data and present it to our new boss.
 
 ## Data Exploration and Preparation
-
+We begin by importing and loading our desired data set and running some summary functions to get familiar with it. We then make any necessary fixes and transformations to prepare it for analysis.
 
 ### Load and View Data
-
 ```{r message=FALSE, warning=FALSE}
 atm_raw <- read.csv("https://raw.githubusercontent.com/Stevee-G/Data624/refs/heads/main/Project1/ATMData.csv")
 
@@ -43,10 +42,9 @@ atm_raw %>%
   filter(is.na(Cash))
 ```
 
-
+As can be seen above, there are a few issues already. The `DATE` variable is in character format, rendering useless as a time series, and there are both missing values and blank rows. Below, we address this.
 
 ### Address Formatting and Missing Values
-
 ```{r message=FALSE, warning=FALSE}
 atm_raw$DATE <- str_extract(atm_raw$DATE, "^[^ ]+") %>%
   as.Date(format = "%m/%d/%Y")
@@ -76,10 +74,9 @@ ggplot(atm_imputed %>%
   labs(title = "ATM Cashflow")
 ```
 
-
+As shown above, we addressed the `DATE` variable format conflict by transforming it into an official date variable. We then filtered out the rows with blank `ATM` entries as these cannot be used for analysis. Afterwards, we pivot the data frame wider in order to have all cash values correspond to their respective ATM. We then impute the remaining empty `Cash` cells by using the K-Nearest Neighbor method looking towards up to 5 neighbor cells. The summary and plot of the outcome can be seen above.
 
 ### Prepare Tsibbles
-
 ```{r message=FALSE, warning=FALSE}
 atm1 <- select(atm_imputed, c(DATE, ATM1)) %>% 
   as_tsibble(index = DATE)
@@ -106,10 +103,9 @@ autoplot(atm4) +
   labs(title = "ATM4 Cashflow")
 ```
 
-
+Above we prepared individual time series tables, one for each ATM, in order to better analyze the patterns of each. Their respective plots are also displayed.
 
 ## ATM 1
-
 ```{r message=FALSE, warning=FALSE}
 gg_tsdisplay(atm1)
 
@@ -140,8 +136,9 @@ mam_fc_a1 %>%
   labs(title = "ATM1 ETS Forecast")
 ```
 
-## ATM 2
+ATM1 displays seasonal behavior and does not contain any abnormalities in its entries. Above we get a sense of its distribution, variation, and residuals using the `gg_tsdisplay()` function. We start off the analysis by calculating both lambda and ARIMA fit values in order to understand which direction we should go in. As can be seen, we were suggested an ARIMA (0,0,1)(0,1,2) model. Using what we know, we went ahead and performed the forecast and obtained the results shown. Unfortunately, the ARIMA model did not provide such an ideal forecast. For this reason, we took a second approach and looked towards ETS modeling. Given the features of the time series, an MAM ETS model was fit and used to forecast. The results can be seen directly the results for the ARIMA model.
 
+## ATM 2
 ```{r message=FALSE, warning=FALSE}
 gg_tsdisplay(atm2)
 
@@ -172,10 +169,9 @@ madm_fc_a2 %>%
   labs(title = "ATM2 ETS Forecast")
 ```
 
-
+ATM2 also displays seasonal behavior. However, its variability also seems to dip as time goes on. For this reason, it was especially necessary to consider the appropriate lambda to address this decrease in variance. As with ATM1, we get a sense of its distribution, variation, and residuals using the `gg_tsdisplay()` function. Just like before, we again calculate both lambda and ARIMA fit values in order to understand which direction we should go in. As can be seen, we were suggested an ARIMA (2,0,2)(0,1,1) model. Using this, we went ahead and performed the forecast and obtained the results shown. Sadly, yet again, the ARIMA model did not provide such an ideal forecast. Therefore, we once again looked towards ETS modeling. Given the features of the time series, an MAdM ETS model was fit and used to forecast. The results can be seen directly the results for the ARIMA model.
 
 ## ATM 3
-
 ```{r message=FALSE, warning=FALSE}
 gg_tsdisplay(atm3)
 
@@ -206,10 +202,9 @@ ses_fc_a3 %>%
   labs(title = "ATM3 ETS Forecast")
 ```
 
-
+With ATM3, we will continue what we've already done with ATM1 and ATM2. ATM3 does not show any seasonal behavior or anything we could use to identify a pattern since the majority of `Cash` values are 0 up until the very last 3 entries. Seeing this would suggest that we could get away with just performing a NAIVE or SNAIVE model analysis with the final entries, but we will continue to approach as previously. As with ATM1, we get a sense of its distribution, variation, and residuals using the `gg_tsdisplay()` function. Just like before, we again calculate both lambda and ARIMA fit values in order to understand which direction we should go in. As can be seen, we were suggested an ARIMA (0,0,2) model with zero mean. Using this, we went ahead and performed the forecast and obtained the results shown. Once again the ARIMA model did not provide a good forecast so we fitted an ETS model. Given the features of the time series, an SES ETS model was fit and used to forecast. The results can be seen directly the results for the ARIMA model.
 
 ## ATM 4
-
 ```{r message=FALSE, warning=FALSE}
 atm4 %>% 
   sort_by(atm4$ATM4, decreasing = TRUE)
@@ -231,7 +226,7 @@ afit_atm4
 
 checkresiduals(afit_atm4)
 
-tfit_atm4 <- Arima(atm4$ATM4, order = c(0, 0, 0), include.mean = TRUE, lambda = lambda_atm4)
+tfit_atm4 <- Arima(atm4$ATM4, order = c(0, 0, 3), seasonal = c(1, 0, 0), include.mean = TRUE, lambda = lambda_atm4)
 fc_atm4 <- tfit_atm4 %>% 
   forecast(h = 31)
 
@@ -248,10 +243,9 @@ mam_fc_a4 %>%
   labs(title = "ATM4 ETS Forecast")
 ```
 
-
+ATM4 also displays seasonal behavior. However, it seems to contain an overtly obvious outlier. We deal with this be first identifying how many outliers there are. Doing this we can see there is only one. We addrress this outlier by replacing it with the mean for the data set. We once again check to see if it worked and everything looked fine. We continue on to get a sense of its distribution, variation, and residuals using the `gg_tsdisplay()` function. Just like before, we calculate both lambda and ARIMA fit values in order to understand which direction we should go in. As can be seen, we were suggested an ARIMA (0,0,3)(1,0,0) model with non-zero mean. Using this, we went ahead and performed the forecast and obtained the results shown. Once again the ARIMA model did not provide a good forecast so we fitted an ETS model. Given the features of the time series, an MAM ETS model was fit and used to forecast. The results can be seen directly the results for the ARIMA model.
 
 ## Prepare and Export ATM Forecast Data
-
 ```{r message=FALSE, warning=FALSE}
 data_frame(DATE = seq(as.Date("2010-05-01"), by ="day", length.out = 31),
            ATM1 = mam_fc_a1$.mean, 
@@ -262,19 +256,20 @@ data_frame(DATE = seq(as.Date("2010-05-01"), by ="day", length.out = 31),
   write.xlsx("ATM_Forecasts.xlsx")
 ```
 
+Finally, we take the ETS forecast results and export them as one table to an excel spreadsheet.
+
 ## Prompt B
 Part B – Forecasting Power, ResidentialCustomerForecastLoad-624.xlsx
 
 Part B consists of a simple dataset of residential power usage for January 1998 until December 2013.  Your assignment is to model these data and a monthly forecast for 2014.  The data is given in a single file.  The variable ‘KWH’ is power consumption in Kilowatt hours, the rest is straight forward.    Add this to your existing files above.
 
 ## Approach
-
+For this portion, we've been tasked with analyzing historical residential power data and forecasting what the next year of usage could look like. Just as with the previous analysis, we start off by getting familiar with the data. We then address any issues we may have found in the data that could impede a smooth analysis. Then, we begin testing different forecast models to try and see which one fits best. Finally, we use the best fit model to forecast the solicited data and present it to our new boss.
 
 ## Data Exploration and Preparation
-
+Once again, we begin by importing and loading our desired data set and running some summary functions to get familiar with it. We then make any necessary fixes and transformations to prepare it for analysis.
 
 ### Load and View Data
-
 ```{r message=FALSE, warning=FALSE}
 pwr_raw <- read.csv("https://raw.githubusercontent.com/Stevee-G/Data624/refs/heads/main/Project1/PowerData.csv")
 
@@ -286,10 +281,9 @@ pwr_raw %>%
   filter(is.na(KWH))
 ```
 
-
+As can be seen above, the 2 main issues with this data set are its poorly formatted date variable, `YYYY.MMM`, and one missing value. We make sure to address these discrepancies below.
 
 ### Address Formatting and Missing Value
-
 ```{r message=FALSE, warning=FALSE}
 pwr_raw$YYYY.MMM <- yearmonth(pwr_raw$YYYY.MMM)
 
@@ -306,10 +300,9 @@ ggplot(pwr_imputed, aes(x = YYYY.MMM, y = KWH)) +
   labs(title = "KWH per Month")
 ```
 
-
+As shown above, we addressed the `YYYY.MMM` variable formatting by transforming it into an official date variable using the `yearmonth` function. We then imputed the empty `KWH` cell using the K-Nearest Neighbor method looking towards up to 5 neighbor cells. A glimpse and plot of the outcome can be seen above.
 
 ### Prepare Tsibble
-
 ```{r message=FALSE, warning=FALSE}
 power <- pwr_imputed %>% 
   select(-CaseSequence) %>% 
@@ -319,10 +312,9 @@ autoplot(power) +
   labs(title = "KWH per Month")
 ```
 
-
+Above we performed a simple `tsibble` transformation to format the data set into an analyzable time series.
 
 ## Power
-
 ```{r message=FALSE, warning=FALSE}
 gg_tsdisplay(power)
 
@@ -353,13 +345,12 @@ mam_fc_p %>%
   labs(title = "KWH ETS Forecast")
 ```
 
-
+The power usage data displays seasonal behavior and does not contain any abnormalities in its entries. Above we get a sense of its distribution, variation, and residuals using the `gg_tsdisplay()` function. We start off the analysis by calculating both lambda and ARIMA fit values in order to understand which direction we should go in. As can be seen, we were suggested an ARIMA (0,0,1)(0,1,1) model. Using what we know, we went ahead and performed the forecast and obtained the results shown. Unfortunately, and yet again, the ARIMA model did not provide such an ideal forecast. Therefore, we once again looked towards ETS modeling. Given the features of the time series, an MAM ETS model was fit and used to forecast. The results can be seen directly the results for the ARIMA model.
 
 ## Prepare and Export KWH Forecast Data
-
 ```{r message=FALSE, warning=FALSE}
 data_frame(`YYYY.MMM` = paste0(2014, "-", month.abb), KWH = mam_fc_p$.mean) %>% 
   write.xlsx("Power_KWH_Forecasts.xlsx")
 ```
 
-
+Finally, we take the ETS forecast result and export it to an excel spreadsheet.
