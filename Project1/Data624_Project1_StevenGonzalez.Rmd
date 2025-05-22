@@ -125,10 +125,19 @@ checkresiduals(afit_atm1)
 
 tfit_atm1 <- Arima(atm1$ATM1, order = c(0, 0, 1), seasonal = c(0, 1, 2), lambda = lambda_atm1)
 fc_atm1 <- tfit_atm1 %>% 
-  forecast(h = 30)
+  forecast(h = 31)
 
 autoplot(fc_atm1) +
-  labs(title = "ATM1 Forecast")
+  labs(title = "ATM1 ARIMA Forecast")
+
+mam_fit_a1 <- atm1 %>%
+  model(MAM = ETS(box_cox(ATM1, lambda_atm1) ~ error('M') + trend('A') + season('M')))
+mam_fc_a1 <- mam_fit_a1 %>% 
+  forecast(h = 31)
+
+mam_fc_a1 %>% 
+  autoplot(atm1) +
+  labs(title = "ATM1 ETS Forecast")
 ```
 
 ## ATM 2
@@ -148,10 +157,19 @@ checkresiduals(afit_atm2)
 
 tfit_atm2 <- Arima(atm2$ATM2, order = c(2, 0, 2), seasonal = c(0, 1, 1), lambda = lambda_atm2)
 fc_atm2 <- tfit_atm2 %>% 
-  forecast(h = 30)
+  forecast(h = 31)
 
 autoplot(fc_atm2) +
-  labs(title = "ATM2 Forecast")
+  labs(title = "ATM2 ARIMA Forecast")
+
+madm_fit_a2 <- atm2 %>%
+  model(MAdM = ETS(box_cox(ATM2, lambda_atm2) ~ error('M') + trend('Ad') + season('M')))
+madm_fc_a2 <- madm_fit_a2 %>% 
+  forecast(h = 31)
+
+madm_fc_a2 %>% 
+  autoplot(atm2) +
+  labs(title = "ATM2 ETS Forecast")
 ```
 
 
@@ -173,10 +191,19 @@ checkresiduals(afit_atm3)
 
 tfit_atm3 <- Arima(atm3$ATM3, order = c(2, 0, 2), include.mean = FALSE, lambda = lambda_atm3)
 fc_atm3 <- tfit_atm3 %>% 
-  forecast(h = 30)
+  forecast(h = 31)
 
 autoplot(fc_atm3) +
-  labs(title = "ATM3 Forecast")
+  labs(title = "ATM3 ARIMA Forecast")
+
+ses_fit_a3 <- atm3 %>%
+  model(SES = ETS(box_cox(ATM3, lambda_atm3) ~ error('A') + trend('N') + season('N')))
+ses_fc_a3 <- ses_fit_a3 %>% 
+  forecast(h = 31)
+
+ses_fc_a3 %>% 
+  autoplot(atm3) +
+  labs(title = "ATM3 ETS Forecast")
 ```
 
 
@@ -184,6 +211,14 @@ autoplot(fc_atm3) +
 ## ATM 4
 
 ```{r message=FALSE, warning=FALSE}
+atm4 %>% 
+  sort_by(atm4$ATM4, decreasing = TRUE)
+
+atm4$ATM4[which.max(atm4$ATM4)] <- median(atm4$ATM4, na.rm = TRUE)
+
+atm4 %>% 
+  sort_by(atm4$ATM4, decreasing = TRUE)
+
 gg_tsdisplay(atm4)
 
 lambda_atm4 <- atm4 %>%
@@ -198,10 +233,19 @@ checkresiduals(afit_atm4)
 
 tfit_atm4 <- Arima(atm4$ATM4, order = c(0, 0, 0), include.mean = TRUE, lambda = lambda_atm4)
 fc_atm4 <- tfit_atm4 %>% 
-  forecast(h = 30)
+  forecast(h = 31)
 
 autoplot(fc_atm4) +
-  labs(title = "ATM4 Forecast")
+  labs(title = "ATM4 ARIMA Forecast")
+
+mam_fit_a4 <- atm4 %>%
+  model(MAM = ETS(box_cox(ATM4, lambda_atm4) ~ error('M') + trend('A') + season('M')))
+mam_fc_a4 <- mam_fit_a4 %>% 
+  forecast(h = 31)
+
+mam_fc_a4 %>% 
+  autoplot(atm4) +
+  labs(title = "ATM4 ETS Forecast")
 ```
 
 
@@ -209,13 +253,12 @@ autoplot(fc_atm4) +
 ## Prepare and Export ATM Forecast Data
 
 ```{r message=FALSE, warning=FALSE}
-data_frame(DATE = seq(as.Date("2010-05-01"), by ="day", length.out = 30),
-           ATM1 = fc_atm1$mean, 
-           ATM2 = fc_atm2$mean,
-           ATM3 = fc_atm3$mean,
-           ATM4 = fc_atm4$mean**2) %>%
-  gather(key = ATM, value = Cash, -DATE) %>%
-  mutate(prediction = TRUE) %>% 
+data_frame(DATE = seq(as.Date("2010-05-01"), by ="day", length.out = 31),
+           ATM1 = mam_fc_a1$.mean, 
+           ATM2 = madm_fc_a2$.mean,
+           ATM3 = ses_fc_a3$.mean,
+           ATM4 = mam_fc_a4$.mean**2) %>%
+  gather(key = ATM, value = Cash, -DATE) %>% 
   write.xlsx("ATM_Forecasts.xlsx")
 ```
 
@@ -298,7 +341,16 @@ fc_p <- tfit_p %>%
   forecast(h = 12)
 
 autoplot(fc_p) +
-  labs(title = "KWH Forecast")
+  labs(title = "KWH ARIMA Forecast")
+
+mam_fit_p <- power %>%
+  model(MAM = ETS(box_cox(KWH, lambda_p) ~ error('M') + trend('A') + season('M')))
+mam_fc_p <- mam_fit_p %>% 
+  forecast(h = 12)
+
+mam_fc_p %>% 
+  autoplot(power) +
+  labs(title = "KWH ETS Forecast")
 ```
 
 
@@ -306,6 +358,8 @@ autoplot(fc_p) +
 ## Prepare and Export KWH Forecast Data
 
 ```{r message=FALSE, warning=FALSE}
-data_frame(`YYYY.MMM` = paste0(2014, "-", month.abb), KWH = fc_p$mean) %>% 
+data_frame(`YYYY.MMM` = paste0(2014, "-", month.abb), KWH = mam_fc_p$.mean) %>% 
   write.xlsx("Power_KWH_Forecasts.xlsx")
 ```
+
+
