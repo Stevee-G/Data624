@@ -6,15 +6,19 @@ output:
   html_document: default
   pdf_document: default
 ---
+
 ```{r message=FALSE, warning=FALSE}
+library(forecast)
 library(fpp3)
 library(ggplot2)
 library(knitr)
 library(openxlsx)
 library(readxl)
+library(seasonal)
 library(tidyverse)
 library(VIM)
 ```
+
 ## Prompt A
 Part A – ATM Forecast, ATM624Data.xlsx
 
@@ -27,46 +31,281 @@ In part A, I want you to forecast how much cash is taken out of 4 different ATM 
 
 
 ### Load and View Data
-```{r message=FALSE, warning=FALSE}
-training <- read.csv("https://raw.githubusercontent.com/Stevee-G/Data624/refs/heads/main/Project2/TrainingData.csv")
-testing <- read.csv("https://raw.githubusercontent.com/Stevee-G/Data624/refs/heads/main/Project2/TestData.csv")
 
-str(training)
-str(testing)
+```{r message=FALSE, warning=FALSE}
+atm_raw <- read.csv("https://raw.githubusercontent.com/Stevee-G/Data624/refs/heads/main/Project1/ATMData.csv")
+
+str(atm_raw)
+head(atm_raw)
+summary(atm_raw)
+
+atm_raw %>% 
+  filter(is.na(Cash))
 ```
 
-As can be seen above, the data sets are comprised of 33 variables each, 32 of them most likely being predictor variables. The training data set has 2571 observations while the testing data set has 267 observations.
+
 
 ### Address Formatting and Missing Values
-```{r message=FALSE, warning=FALSE}
 
+```{r message=FALSE, warning=FALSE}
+atm_raw$DATE <- str_extract(atm_raw$DATE, "^[^ ]+") %>%
+  as.Date(format = "%m/%d/%Y")
+
+str(atm_raw)
+
+atm_filtered <- atm_raw %>% 
+  filter(ATM != "")
+
+atm_wider <- atm_filtered %>% 
+  pivot_wider(names_from = ATM,
+              values_from = Cash)
+str(atm_wider)
+
+atm_imputed <- kNN(atm_wider, k = 5) %>% 
+  select(c(1:5))
+sum(is.na(atm_imputed))
+
+summary(atm_imputed)
+
+ggplot(atm_imputed %>%
+         pivot_longer(cols = c(ATM1, ATM2, ATM3, ATM4),
+                      names_to = "ATM",
+                      values_to = "Cash"),
+       aes(x = DATE, y = Cash, color = ATM)) +
+  geom_line() +
+  labs(title = "ATM Cashflow")
 ```
+
+
 
 ### Prepare Tsibbles
-```{r message=FALSE, warning=FALSE}
 
+```{r message=FALSE, warning=FALSE}
+atm1 <- select(atm_imputed, c(DATE, ATM1)) %>% 
+  as_tsibble(index = DATE)
+head(atm1)
+autoplot(atm1) +
+  labs(title = "ATM1 Cashflow")
+
+atm2 <- select(atm_imputed, c(DATE, ATM2)) %>% 
+  as_tsibble(index = DATE)
+head(atm2)
+autoplot(atm2) +
+  labs(title = "ATM2 Cashflow")
+
+atm3 <- select(atm_imputed, c(DATE, ATM3)) %>% 
+  as_tsibble(index = DATE)
+head(atm3)
+autoplot(atm3) +
+  labs(title = "ATM3 Cashflow")
+
+atm4 <- select(atm_imputed, c(DATE, ATM4)) %>% 
+  as_tsibble(index = DATE)
+head(atm4)
+autoplot(atm4) +
+  labs(title = "ATM4 Cashflow")
 ```
 
-## ATM 1
-```{r message=FALSE, warning=FALSE}
 
+
+## ATM 1
+
+```{r message=FALSE, warning=FALSE}
+gg_tsdisplay(atm1)
+
+lambda_atm1 <- atm1 %>%
+  features(ATM1, features = guerrero) %>% 
+  pull(lambda_guerrero)
+lambda_atm1
+
+afit_atm1 <- auto.arima(atm1, seasonal = TRUE)
+afit_atm1
+
+checkresiduals(afit_atm1)
+
+tfit_atm1 <- Arima(atm1$ATM1, order = c(0, 0, 1), seasonal = c(0, 1, 2), lambda = lambda_atm1)
+fc_atm1 <- tfit_atm1 %>% 
+  forecast(h = 30)
+
+autoplot(fc_atm1) +
+  labs(title = "ATM1 Forecast")
 ```
 
 ## ATM 2
-```{r message=FALSE, warning=FALSE}
 
+```{r message=FALSE, warning=FALSE}
+gg_tsdisplay(atm2)
+
+lambda_atm2 <- atm2 %>%
+  features(ATM2, features = guerrero) %>% 
+  pull(lambda_guerrero)
+lambda_atm2
+
+afit_atm2 <- auto.arima(atm2)
+afit_atm2
+
+checkresiduals(afit_atm2)
+
+tfit_atm2 <- Arima(atm2$ATM2, order = c(2, 0, 2), seasonal = c(0, 1, 1), lambda = lambda_atm2)
+fc_atm2 <- tfit_atm2 %>% 
+  forecast(h = 30)
+
+autoplot(fc_atm2) +
+  labs(title = "ATM2 Forecast")
 ```
+
+
 
 ## ATM 3
-```{r message=FALSE, warning=FALSE}
 
+```{r message=FALSE, warning=FALSE}
+gg_tsdisplay(atm3)
+
+lambda_atm3 <- atm3 %>%
+  features(ATM3, features = guerrero) %>% 
+  pull(lambda_guerrero)
+lambda_atm3
+
+afit_atm3 <- auto.arima(atm3)
+afit_atm3
+
+checkresiduals(afit_atm3)
+
+tfit_atm3 <- Arima(atm3$ATM3, order = c(2, 0, 2), include.mean = FALSE, lambda = lambda_atm3)
+fc_atm3 <- tfit_atm3 %>% 
+  forecast(h = 30)
+
+autoplot(fc_atm3) +
+  labs(title = "ATM3 Forecast")
 ```
+
+
 
 ## ATM 4
-```{r message=FALSE, warning=FALSE}
 
+```{r message=FALSE, warning=FALSE}
+gg_tsdisplay(atm4)
+
+lambda_atm4 <- atm4 %>%
+  features(ATM4, features = guerrero) %>% 
+  pull(lambda_guerrero)
+lambda_atm4
+
+afit_atm4 <- auto.arima(atm4)
+afit_atm4
+
+checkresiduals(afit_atm4)
+
+tfit_atm4 <- Arima(atm4$ATM4, order = c(0, 0, 0), include.mean = TRUE, lambda = lambda_atm4)
+fc_atm4 <- tfit_atm4 %>% 
+  forecast(h = 30)
+
+autoplot(fc_atm4) +
+  labs(title = "ATM4 Forecast")
 ```
 
 
-## Conclusion
 
+## Prepare and Export ATM Forecast Data
+
+```{r message=FALSE, warning=FALSE}
+data_frame(DATE = seq(as.Date("2010-05-01"), by ="day", length.out = 30),
+           ATM1 = fc_atm1$mean, 
+           ATM2 = fc_atm2$mean,
+           ATM3 = fc_atm3$mean,
+           ATM4 = fc_atm4$mean**2) %>%
+  gather(key = ATM, value = Cash, -DATE) %>%
+  mutate(prediction = TRUE) %>% 
+  write.xlsx("ATM_Forecasts.xlsx")
+```
+
+## Prompt B
+Part B – Forecasting Power, ResidentialCustomerForecastLoad-624.xlsx
+
+Part B consists of a simple dataset of residential power usage for January 1998 until December 2013.  Your assignment is to model these data and a monthly forecast for 2014.  The data is given in a single file.  The variable ‘KWH’ is power consumption in Kilowatt hours, the rest is straight forward.    Add this to your existing files above.
+
+## Approach
+
+
+## Data Exploration and Preparation
+
+
+### Load and View Data
+
+```{r message=FALSE, warning=FALSE}
+pwr_raw <- read.csv("https://raw.githubusercontent.com/Stevee-G/Data624/refs/heads/main/Project1/PowerData.csv")
+
+str(pwr_raw)
+head(pwr_raw)
+summary(pwr_raw)
+
+pwr_raw %>% 
+  filter(is.na(KWH))
+```
+
+
+
+### Address Formatting and Missing Value
+
+```{r message=FALSE, warning=FALSE}
+pwr_raw$YYYY.MMM <- yearmonth(pwr_raw$YYYY.MMM)
+
+str(pwr_raw)
+
+pwr_imputed <- kNN(pwr_raw, k = 5) %>% 
+  select(c(1:3))
+sum(is.na(pwr_imputed))
+
+head(pwr_imputed)
+
+ggplot(pwr_imputed, aes(x = YYYY.MMM, y = KWH)) +
+  geom_line() +
+  labs(title = "KWH per Month")
+```
+
+
+
+### Prepare Tsibble
+
+```{r message=FALSE, warning=FALSE}
+power <- pwr_imputed %>% 
+  select(-CaseSequence) %>% 
+  as_tsibble(index = YYYY.MMM)
+head(power)
+autoplot(power) +
+  labs(title = "KWH per Month")
+```
+
+
+
+## Power
+
+```{r message=FALSE, warning=FALSE}
+gg_tsdisplay(power)
+
+lambda_p <- power %>%
+  features(KWH, features = guerrero) %>% 
+  pull(lambda_guerrero)
+lambda_p
+
+afit_p <- auto.arima(power, seasonal = TRUE)
+afit_p
+
+checkresiduals(afit_p)
+
+tfit_p <- Arima(power$KWH, order = c(0, 0, 1), seasonal = c(1, 1, 1), lambda = lambda_p)
+fc_p <- tfit_p %>% 
+  forecast(h = 12)
+
+autoplot(fc_p) +
+  labs(title = "KWH Forecast")
+```
+
+
+
+## Prepare and Export KWH Forecast Data
+
+```{r message=FALSE, warning=FALSE}
+data_frame(`YYYY.MMM` = paste0(2014, "-", month.abb), KWH = fc_p$mean) %>% 
+  write.xlsx("Power_KWH_Forecasts.xlsx")
+```
